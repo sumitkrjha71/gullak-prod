@@ -5,7 +5,9 @@ import { cn } from '@/lib/utils';
 
 type Intent = 'encrypted' | 'stopAnytime' | 'inYourName' | 'noHidden' | 'notSold' | 'notHeld';
 
-const meta: Record<Intent, { Icon: React.ComponentType<{ size?: number; className?: string }> }> = {
+import { LucideIcon } from "lucide-react";
+
+const meta: Record<Intent, { Icon: LucideIcon }> = {
   encrypted: { Icon: Lock },
   stopAnytime: { Icon: Hand },
   inYourName: { Icon: BadgeCheck },
