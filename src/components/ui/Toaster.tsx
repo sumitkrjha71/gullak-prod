@@ -13,14 +13,14 @@ type Toast = {
   intent: ToastIntent;
   title: string;
   body?: string;
-  ttlMs: number;
+  ttlMs?: number;
   onAction?: () => void | Promise<void>;
   actionLabel?: string;
 };
 
 type ToastStore = {
   toasts: Toast[];
-  push: (t: Omit<Toast, 'id'>) => string;
+  push: (t: Omit<Toast, 'id'> & { ttlMs?: number }) => string;
   dismiss: (id: string) => void;
 };
 
