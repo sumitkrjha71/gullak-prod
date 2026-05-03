@@ -78,7 +78,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {`
             if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
               window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(() => {});
+                navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+                  .then((reg) => {
+                    // If a new SW is installing while the old one controls the page,
+                    // listen for it to take over and force a reload — fixes the "stale
+                    // page on new visit" bug after we ship a new deploy.
+                    reg.addEventListener('updatefound', () => {
+                      const newWorker = reg.installing;
+                      if (!newWorker) return;
+                      newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                          // A new SW activated while page was already controlled — refresh once.
+                          if (!sessionStorage.getItem('sw_refreshed_v4_1')) {
+                            sessionStorage.setItem('sw_refreshed_v4_1', '1');
+                            window.location.reload();
+                          }
+                        }
+                      });
+                    });
+                    // Force update check on every page load.
+                    reg.update().catch(() => {});
+                  })
+                  .catch(() => {});
               });
             }
           `}
