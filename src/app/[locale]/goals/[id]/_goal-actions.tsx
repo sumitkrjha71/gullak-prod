@@ -45,7 +45,7 @@ export function GoalActions({
       body: JSON.stringify({ ruleId, kind }),
     });
     setPauseSheet(false);
-    push({ intent: 'success', title: labels.pause });
+    push({ intent: 'success', title: labels.pause, ttlMs: 3000 });
     router.refresh();
   };
 
