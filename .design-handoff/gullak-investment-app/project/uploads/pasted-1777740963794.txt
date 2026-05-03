@@ -1,0 +1,16 @@
+design me a complete application in UI for this I am giving you the read me file for card by card details I want out this things and also at the same time I want you to very specifically design the "FINTECH SAVINGS + INVESTMENTS" app to it build trust and credibility among the Users which are Indians from the complete middle income group. I have decided the Sparrow to be the Mascot of the Application. And the name of the App is "Gullak", which translates to Earthen Pot used for saving little Pennies in Indian House Hold. I have attached the Images for both that I want as the Base reference for you to use, Develop the flow for the UI As per tjhe follwing  CARD PLACEMENT-"
+End-to-end journey:
+
+```
+Landing
+  └─ Language pick (en / hi / pa / kn)
+       └─ Phone + OTP (mocked: 123456)
+            └─ Name → Profile → Salary day
+                 └─ Trust checkpoint  ⭐ (the most-rehearsed screen)
+                      └─ Goal pick (EMI / Emergency / Ghar / Shaadi / Retirement / Festival)
+                           └─ Autopilot mode (Fixed / Round-up / Salary-sweep)
+                                └─ First commitment (₹10/₹20/₹50/day)
+                                     └─ Mandate consent (simulated)
+                                          └─ Success (post-action trust copy)
+                                               └─ Home dashboard
+```,-And Intructions As given in the MARKFDOWN ATTACHED!

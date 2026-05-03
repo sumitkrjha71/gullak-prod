@@ -1,0 +1,162 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Lock, ChevronLeft, ArrowRight } from 'lucide-react';
+
+export function PhoneForm({
+  locale,
+  labels,
+}: {
+  locale: string;
+  labels: {
+    title: string;
+    sub: string;
+    placeholder: string;
+    why: string;
+    whyLabel: string;
+    send: string;
+    sending: string;
+    invalid: string;
+    demoHint: string;
+    encrypted: string;
+  };
+}) {
+  const router = useRouter();
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const valid = /^[6-9]\d{9}$/.test(phone);
+
+  const submit = async () => {
+    setError(null);
+    if (!valid) {
+      setError(labels.invalid);
+      return;
+    }
+    setLoading(true);
+    try {
+      const r = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      if (!r.ok) throw new Error('send_failed');
+      router.push(`/${locale}/onboarding/otp?phone=${encodeURIComponent(phone)}`);
+    } catch {
+      setError(labels.invalid);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main
+      className="flex min-h-dvh w-full flex-col anim-screen-enter"
+      style={{ background: 'var(--bg)', fontFamily: "'Nunito', sans-serif" }}
+    >
+      <header className="safe-top mx-auto flex w-full max-w-md items-center justify-between px-5 pt-3">
+        <Link
+          href={`/${locale}/savestment`}
+          aria-label="Back"
+          className="haptic-press flex h-9 w-9 items-center justify-center rounded-full hover:bg-border/40"
+          style={{ color: 'var(--muted)' }}
+        >
+          <ChevronLeft size={20} />
+        </Link>
+        <span className="text-[11px] font-bold" style={{ color: 'var(--trust)' }}>100% Safe · RBI</span>
+        <span className="h-9 w-9" />
+      </header>
+
+      <div className="mx-auto w-full max-w-md px-6 pt-6">
+        <div className="flex flex-col items-center text-center">
+          {/* Chiraiya in 'inviting' pose — gentle wing-tilt */}
+          <Image
+            src="/assets/chiraiya-v2.png"
+            alt=""
+            width={92}
+            height={76}
+            priority
+            style={{
+              width: 92,
+              height: 76,
+              objectFit: 'contain',
+              transform: 'rotate(-3deg)',
+              animation: 'gentleFloat 3s ease-in-out infinite',
+              filter: 'drop-shadow(0 6px 14px rgba(196, 96, 42, 0.18))',
+            }}
+          />
+          <h1
+            className="mt-3"
+            style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2, color: 'var(--text)', letterSpacing: -0.3 }}
+          >
+            {labels.title}
+          </h1>
+          <p className="mt-1.5 text-[14.5px]" style={{ color: 'var(--muted)', lineHeight: 1.5 }}>
+            {labels.sub}
+          </p>
+        </div>
+
+        <div className="mt-8">
+          <div
+            className="flex items-center px-4"
+            style={{
+              background: 'var(--surface)',
+              border: `2px solid ${error ? 'var(--warn)' : phone.length === 10 ? 'var(--saffron)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius-card-lg)',
+              boxShadow: phone.length > 0 ? '0 4px 14px rgba(232,101,10,0.08)' : 'var(--shadow-card)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <span
+              className="mr-3 flex h-9 w-9 items-center justify-center rounded-lg"
+              style={{ background: 'var(--bg-soft)', color: 'var(--text)', fontWeight: 700, fontSize: 14 }}
+            >
+              +91
+            </span>
+            <input
+              type="tel"
+              autoFocus
+              inputMode="numeric"
+              autoComplete="tel"
+              maxLength={10}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder={labels.placeholder}
+              aria-invalid={!!error}
+              className="flex-1 bg-transparent py-3.5 text-[18px] font-semibold outline-none num"
+              style={{ color: 'var(--text)' }}
+            />
+          </div>
+          {error && (
+            <p className="mt-2 text-[12.5px]" style={{ color: 'var(--warn)' }}>
+              {error}
+            </p>
+          )}
+          <p className="mt-2 text-[11.5px]" style={{ color: 'var(--muted)' }}>
+            <span aria-hidden>🔒 </span>
+            {labels.why}
+          </p>
+
+          <button
+            onClick={submit}
+            disabled={!valid || loading}
+            className="haptic-press cta-primary mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-btn text-[16px] font-bold transition-opacity disabled:opacity-50"
+          >
+            {loading ? labels.sending : labels.send}
+            {!loading && <ArrowRight size={16} />}
+          </button>
+
+          <div
+            className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[11.5px]"
+            style={{ background: 'var(--bg-soft)', color: 'var(--muted)' }}
+          >
+            <Lock size={11} aria-hidden /> {labels.demoHint}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

@@ -1,0 +1,264 @@
+// Autopilot India — V1 Prisma schema
+// Money is stored in paise (BigInt) everywhere. No floats.
+// AuditLog is append-only — no update/delete code paths.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  phone           String   @unique
+  name            String?
+  locale          String   @default("en") // en | hi | pa | kn
+  ageRange        String?
+  incomeRange     String?
+  state           String?
+  salaryDay       Int?
+  isSalaried      Boolean  @default(false)
+  lifecycleState  String   @default("NEW") // NEW | ONBOARDING | TRUST_ACKNOWLEDGED | GOAL_CREATED | AUTOPILOT_CONFIGURED | MANDATE_PENDING | ACTIVE | PAUSED
+  kycCompleted    Boolean  @default(false)
+  aaConsentLinkedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  goals           Goal[]
+  rules           AutopilotRule[]
+  mandates        Mandate[]
+  transactions    Transaction[]
+  events          SavingsEvent[]
+  auditLogs       AuditLog[]
+  streak          Streak?
+  notifications   Notification[]
+  preferences     UserPreference?
+  roundupBucket   RoundupBucket?
+  aaConsents      AAConsent[]
+  loanOffers      LoanOffer[]
+  loanApplications LoanApplication[]
+}
+
+// Account Aggregator consent — tracks what the user authorised the AA to fetch.
+// V3 is mocked; the surface matches what real Sahamati AA flow would return.
+model AAConsent {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fipId          String    // mock FIP identifier (e.g. "MOCK_HDFC")
+  consentHandle  String    @unique // mock UUID-shaped handle
+  status         String    @default("ACTIVE") // ACTIVE | REVOKED | EXPIRED
+  fetchedAt      DateTime?
+  expiresAt      DateTime
+  payload        String?   // JSON — mock account snapshot (transactions, salary, EMI patterns)
+  createdAt      DateTime  @default(now())
+
+  @@index([userId, status])
+}
+
+// OCEN — Open Credit Enablement Network. Mocked.
+model LoanProduct {
+  id             String   @id @default(cuid())
+  type           String   @unique // two-wheeler | four-wheeler | gold | consumer-durable | emergency
+  name           String
+  minAmountPaise BigInt
+  maxAmountPaise BigInt
+  minTenureDays  Int
+  maxTenureDays  Int
+  baseRatePctBps Int      // basis points × 100 (e.g., 14% = 1400)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+}
+
+model LoanOffer {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productType    String
+  principalPaise BigInt
+  tenureDays     Int
+  interestPctBps Int
+  emiPaise       BigInt
+  lenderName     String   // mock NBFC name
+  status         String   @default("PRE_APPROVED") // PRE_APPROVED | APPLIED | DISBURSED | EXPIRED | DECLINED
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  applications   LoanApplication[]
+
+  @@index([userId, status])
+}
+
+model LoanApplication {
+  id             String   @id @default(cuid())
+  offerId        String
+  offer          LoanOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         String    @default("SUBMITTED") // SUBMITTED | APPROVED | DISBURSED | REJECTED
+  disbursedAt    DateTime?
+  idempotencyKey String    @unique
+  payload        String    // JSON — application form snapshot
+  createdAt      DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Goal {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String // emergency | emi | home | wedding | retirement | festival | education | vehicle
+  title         String
+  targetPaise   BigInt
+  savedPaise    BigInt    @default(0)
+  investedPaise BigInt    @default(0)
+  growthPaise   BigInt    @default(0)
+  deadline      DateTime?
+  status        String    @default("active") // active | paused | completed
+  isPrimary     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  rules        AutopilotRule[]
+  transactions Transaction[]
+
+  @@index([userId, status])
+}
+
+model AutopilotRule {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId      String
+  goal        Goal      @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  mode        String // fixed | roundup | sweep
+  amountPaise BigInt? // for fixed/sweep
+  frequency   String? // daily | weekly (fixed only)
+  roundUpTo   Int? // 10 | 50 | 100 (roundup only)
+  status      String    @default("active") // active | paused | stopped
+  pauseUntil  DateTime? // for "Pause for 7 days" / "Pause till salary"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  mandate      Mandate?
+  transactions Transaction[]
+
+  @@index([userId, status])
+}
+
+model Mandate {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ruleId           String    @unique
+  rule             AutopilotRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  maxPerDebitPaise BigInt
+  cap              String // daily | weekly | monthly
+  authorisedAt     DateTime  @default(now())
+  revokedAt        DateTime?
+}
+
+model Transaction {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId         String?
+  goal           Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  ruleId         String?
+  rule           AutopilotRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  source         String // fixed | roundup | sweep | manual
+  amountPaise    BigInt
+  status         String // pending | success | failed | reversed
+  failureReason  String? // insufficient_balance | mandate_revoked | network_timeout
+  simulatedRefId String // SIM-XXXXXXXX
+  idempotencyKey String    @unique
+  reversedAt     DateTime?
+  reversalOfId   String? // points to original txn
+  createdAt      DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([goalId, createdAt])
+  @@index([status])
+}
+
+model SavingsEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  payload   String // JSON
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  eventType String
+  payload   String // JSON
+  source    String // user | cron | system
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+model Streak {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentDays   Int       @default(0)
+  longestDays   Int       @default(0)
+  lastSavedDate DateTime?
+  freebiesUsed  Int       @default(0)
+  weekKey       String? // YYYY-WW for resetting freebies
+  updatedAt     DateTime  @updatedAt
+}
+
+model Notification {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   String // actionable | info | milestone
+  titleKey   String
+  bodyKey    String
+  bodyParams String? // JSON
+  readAt     DateTime?
+  deepLink   String?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model UserPreference {
+  userId        String  @id
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifySalary  Boolean @default(true)
+  notifyRoundup Boolean @default(true)
+  notifyWeekly  Boolean @default(true)
+  forceFailNext Boolean @default(false)
+  updatedAt     DateTime @updatedAt
+}
+
+model RoundupBucket {
+  userId       String   @id
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateKey      String // YYYY-MM-DD IST
+  pendingPaise BigInt   @default(0)
+  items        String   @default("[]") // JSON array of {spend, roundedTo, savePaise}
+  updatedAt    DateTime @updatedAt
+}
+
+model FeatureFlag {
+  key        String   @id
+  enabled    Boolean
+  rolloutPct Int      @default(100)
+  updatedAt  DateTime @updatedAt
+}

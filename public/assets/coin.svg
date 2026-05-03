@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <radialGradient id="coinFace" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#FFE680"/>
+      <stop offset="45%" stop-color="#F5C842"/>
+      <stop offset="80%" stop-color="#D4A017"/>
+      <stop offset="100%" stop-color="#9B7400"/>
+    </radialGradient>
+    <linearGradient id="coinRim" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E8B934"/>
+      <stop offset="100%" stop-color="#8B6800"/>
+    </linearGradient>
+  </defs>
+  <circle cx="16" cy="16" r="15" fill="url(#coinRim)"/>
+  <circle cx="16" cy="16" r="13" fill="url(#coinFace)"/>
+  <text x="16" y="22" text-anchor="middle" font-family="'Tiro Devanagari Hindi', 'Hind', serif" font-size="16" font-weight="900" fill="#7A5500">₹</text>
+  <ellipse cx="11" cy="11" rx="3.5" ry="2" fill="#FFFFFF" opacity="0.45"/>
+</svg>

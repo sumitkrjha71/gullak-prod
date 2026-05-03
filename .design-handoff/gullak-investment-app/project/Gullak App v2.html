@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gullak — नए ज़माने की पुरानी आदत</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body, #root { width:100%; height:100%; overflow:hidden; }
+    body { background:#1a1410; display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; }
+    ::-webkit-scrollbar { width:0; }
+
+    @keyframes dropIn {
+      0% { transform:translateY(-80px) scale(0.6); opacity:0; }
+      60% { transform:translateY(8px) scale(1.05); opacity:1; }
+      100% { transform:translateY(0) scale(1); opacity:1; }
+    }
+    @keyframes gentleFloat {
+      0%,100% { transform:translateY(0); }
+      50% { transform:translateY(-5px); }
+    }
+    @keyframes fadeIn {
+      from { opacity:0; transform:translateY(10px); }
+      to { opacity:1; transform:translateY(0); }
+    }
+    @keyframes slideUp {
+      from { opacity:0; transform:translateY(18px); }
+      to { opacity:1; transform:translateY(0); }
+    }
+    @keyframes confettiFall {
+      0% { transform:translateY(0) rotate(0deg); opacity:1; }
+      100% { transform:translateY(650px) rotate(720deg); opacity:0; }
+    }
+    @keyframes coinDrop {
+      0% { opacity:1; transform:translateY(0); }
+      70% { opacity:1; }
+      100% { opacity:0; transform:translateY(90px); }
+    }
+    @keyframes coinFly {
+      0% { left:0; top:8px; opacity:0; }
+      15% { opacity:1; }
+      85% { opacity:1; }
+      100% { left:46px; top:8px; opacity:0; }
+    }
+    @keyframes birdCarry {
+      0% { left:2px; }
+      100% { left:32px; }
+    }
+    @keyframes shimmer {
+      0% { background-position:200% center; }
+      100% { background-position:-200% center; }
+    }
+    @keyframes celebFly {
+      0%,100% { transform:translate(0,0) rotate(0deg); }
+      25% { transform:translate(-10px,-8px) rotate(-5deg); }
+      50% { transform:translate(5px,-12px) rotate(5deg); }
+      75% { transform:translate(10px,-5px) rotate(-3deg); }
+    }
+    @keyframes chartDraw {
+      from { stroke-dasharray:300; stroke-dashoffset:300; }
+      to { stroke-dasharray:300; stroke-dashoffset:0; }
+    }
+    /* Page transition: Chiraiya flies across */
+    @keyframes birdTransition {
+      0% { left:-60px; top:40%; opacity:0; transform:scaleX(-1) rotate(-5deg); }
+      20% { opacity:1; }
+      50% { top:30%; transform:scaleX(-1) rotate(5deg); }
+      80% { opacity:1; }
+      100% { left:calc(100% + 60px); top:38%; opacity:0; transform:scaleX(-1) rotate(-3deg); }
+    }
+    @keyframes screenEnter {
+      from { opacity:0; transform:translateX(30px); }
+      to { opacity:1; transform:translateX(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="components/ios-frame.jsx"></script>
+  <script type="text/babel" src="components/tweaks-panel.jsx"></script>
+  <script type="text/babel" src="components/i18n.jsx"></script>
+  <script type="text/babel" src="components/screens-landing.jsx"></script>
+  <script type="text/babel" src="components/screens-onboarding.jsx"></script>
+  <script type="text/babel" src="components/screens-commitment.jsx"></script>
+  <script type="text/babel" src="components/screens-dashboard.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "accentColor": "#E8650A",
+      "bgColor": "#242424"
+    }/*EDITMODE-END*/;
+
+    const SCREENS = ['splash','language','phone','profile','trust','goals','autopilot','commitment','mandate','success','dashboard'];
+    const screenLabel = {
+      splash:'Splash', language:'Language', phone:'Phone + OTP',
+      profile:'Profile', trust:'Trust ⭐', goals:'Goal Pick',
+      autopilot:'Autopilot', commitment:'Commitment', mandate:'Mandate',
+      success:'Success', dashboard:'Dashboard'
+    };
+
+    const App = () => {
+      const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const [screen, setScreen] = React.useState('splash');
+      const [lang, setLang] = React.useState('en');
+      const [transitioning, setTransitioning] = React.useState(false);
+      const [userData, setUserData] = React.useState({ name:'', phone:'', salaryDay:1, goal:null, mode:null, amount:20 });
+
+      const go = (s) => {
+        setTransitioning(true);
+        setTimeout(() => {
+          setScreen(s);
+          setTimeout(() => setTransitioning(false), 50);
+        }, 600);
+      };
+
+      const renderScreen = () => {
+        const props = { lang };
+        switch(screen) {
+          case 'splash': return <SplashScreen {...props} onNext={() => go('language')} />;
+          case 'language': return <LanguageScreen onSelect={l => { setLang(l); go('phone'); }} />;
+          case 'phone': return <PhoneOTPScreen {...props} onComplete={ph => { setUserData(d=>({...d,phone:ph})); go('profile'); }} />;
+          case 'profile': return <ProfileScreen {...props} onComplete={(name,sd) => { setUserData(d=>({...d,name,salaryDay:sd})); go('trust'); }} />;
+          case 'trust': return <TrustScreen {...props} userName={userData.name||'User'} onNext={() => go('goals')} />;
+          case 'goals': return <GoalScreen {...props} onSelect={g => { setUserData(d=>({...d,goal:g})); go('autopilot'); }} />;
+          case 'autopilot': return <AutopilotScreen {...props} goal={userData.goal||{label:'Saving'}} onSelect={m => { setUserData(d=>({...d,mode:m})); go('commitment'); }} />;
+          case 'commitment': return <CommitmentScreen {...props} goal={userData.goal||{label:'Saving'}} onSelect={a => { setUserData(d=>({...d,amount:a})); go('mandate'); }} />;
+          case 'mandate': return <MandateScreen {...props} amount={userData.amount} onConfirm={() => go('success')} />;
+          case 'success': return <SuccessScreen {...props} userName={userData.name||'User'} amount={userData.amount} onGoHome={() => go('dashboard')} />;
+          case 'dashboard': return <DashboardScreen {...props} userName={userData.name||'User'} amount={userData.amount} goal={userData.goal} />;
+        }
+      };
+
+      return (
+        <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}>
+          <IOSDevice screenWidth={375} screenHeight={812} statusBarVariant={screen==='splash'?'light':'dark'}>
+            <div style={{ width:'100%',height:'100%',position:'relative',overflow:'hidden' }}>
+              {/* Bird transition overlay */}
+              {transitioning && (
+                <div style={{ position:'absolute',inset:0,zIndex:100,pointerEvents:'none' }}>
+                  <img src="assets/chiraiya-clean.png" alt="" style={{
+                    position:'absolute',width:55,height:45,objectFit:'contain',
+                    animation:'birdTransition 0.6s ease-in-out forwards',
+                    filter:'drop-shadow(0 2px 8px rgba(0,0,0,0.2))',
+                  }} />
+                </div>
+              )}
+              {/* Screen content */}
+              <div key={screen} style={{ width:'100%',height:'100%',animation: 'screenEnter 0.35s ease-out' }}>
+                {renderScreen()}
+              </div>
+            </div>
+          </IOSDevice>
+
+          {/* Screen label */}
+          <div style={{ position:'fixed',bottom:46,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,0.85)',color:'#FFF8F0',fontSize:11,fontWeight:700,padding:'4px 12px',borderRadius:10,zIndex:1000,whiteSpace:'nowrap' }}>
+            {screenLabel[screen]} · {lang.toUpperCase()}
+          </div>
+
+          {/* Dot nav */}
+          <div style={{ position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',zIndex:1000,display:'flex',gap:4,background:'rgba(0,0,0,0.85)',borderRadius:20,padding:'6px 10px' }}>
+            {SCREENS.map(s => (
+              <div key={s} onClick={() => { setScreen(s); }} title={screenLabel[s]} style={{
+                width:10,height:10,borderRadius:'50%',cursor:'pointer',transition:'all 0.2s',
+                background:screen===s?'#E8650A':'rgba(255,255,255,0.3)',
+                border:screen===s?'2px solid #D4A017':'2px solid transparent',
+              }}></div>
+            ))}
+          </div>
+
+          <TweaksPanel title="Gullak Tweaks">
+            <TweakSection title="Navigation">
+              <TweakSelect label="Screen" value={screen}
+                options={SCREENS.map(s=>({value:s,label:screenLabel[s]}))}
+                onChange={v => setScreen(v)} />
+              <TweakSelect label="Language" value={lang}
+                options={[{value:'en',label:'English'},{value:'hi',label:'Hindi'},{value:'pa',label:'Punjabi'},{value:'kn',label:'Kannada'}]}
+                onChange={v => setLang(v)} />
+            </TweakSection>
+            <TweakSection title="Theme">
+              <TweakColor label="Accent" value={tweaks.accentColor} onChange={v => setTweak('accentColor',v)} />
+            </TweakSection>
+          </TweaksPanel>
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
