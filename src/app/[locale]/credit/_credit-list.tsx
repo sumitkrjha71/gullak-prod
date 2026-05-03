@@ -15,8 +15,7 @@ type Product = {
   ratePct: string;
 };
 
-const ICON_FOR: Record<ProductType, React.ComponentType<{ size?: number }>> = {
-  'two-wheeler': Bike,
+const ICON_FOR: Record<ProductType, any> = {  'two-wheeler': Bike,
   'four-wheeler': Car,
   'gold': Coins,
   'consumer-durable': ShoppingBag,
