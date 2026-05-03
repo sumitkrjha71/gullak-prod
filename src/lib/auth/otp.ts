@@ -1,11 +1,20 @@
-// Mocked OTP. Any phone, code = OTP_DEMO_CODE (default "123456").
-// Drop-in replacement surface for Twilio Verify post-V1.
+// Mocked OTP. Drop-in replacement surface for Twilio Verify post-V1.
+//
+// Production-defensive: handles every shape the env var might arrive as
+// (undefined, empty, whitespace-padded, surrounding quotes from Vercel).
+// And ALWAYS accepts '123456' as a universal investor-demo fallback regardless
+// of any env override — guarantees demos work even if Vercel env is misconfigured.
 
-// Defensive: treats undefined, null, AND empty string as "not configured" → fall back to 123456.
-// Also always accepts the universal demo code '123456' as a safety net for investor demos,
-// even when an admin sets a different OTP_DEMO_CODE.
-const ENV_CODE = (process.env.OTP_DEMO_CODE ?? '').trim();
-const PRIMARY_CODE = ENV_CODE.length > 0 ? ENV_CODE : '123456';
+function normaliseEnvCode(raw: string | undefined): string {
+  if (!raw) return '';
+  // Strip surrounding double or single quotes (Vercel users sometimes wrap values),
+  // then trim whitespace and any stray non-digits. Keep digits only.
+  const stripped = raw.trim().replace(/^['"]|['"]$/g, '').trim();
+  return stripped.replace(/\D/g, '');
+}
+
+const ENV_CODE = normaliseEnvCode(process.env.OTP_DEMO_CODE);
+const PRIMARY_CODE = /^\d{6}$/.test(ENV_CODE) ? ENV_CODE : '123456';
 const UNIVERSAL_DEMO_FALLBACK = '123456';
 
 export async function sendOtp(_phone: string): Promise<{ ok: true }> {
@@ -14,7 +23,16 @@ export async function sendOtp(_phone: string): Promise<{ ok: true }> {
 }
 
 export async function verifyOtp(_phone: string, code: string): Promise<{ ok: boolean }> {
-  return { ok: code === PRIMARY_CODE || code === UNIVERSAL_DEMO_FALLBACK };
+  const cleaned = (code ?? '').replace(/\D/g, '');
+  const matches = cleaned === PRIMARY_CODE || cleaned === UNIVERSAL_DEMO_FALLBACK;
+  // Single line of server log — appears in Vercel runtime logs.
+  // Helps diagnose why a code didn't match without leaking the actual digits.
+  if (!matches) {
+    console.warn(
+      `[otp] mismatch: got len=${cleaned.length} primary_len=${PRIMARY_CODE.length} env_was=${ENV_CODE.length}`,
+    );
+  }
+  return { ok: matches };
 }
 
 export function isValidIndianPhone(phone: string): boolean {
