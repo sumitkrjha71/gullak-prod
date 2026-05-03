@@ -7,8 +7,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --skip-generate --accept-data-loss && (tsx prisma/seed.ts || echo 'seed skipped') && next build",
-    "vercel-build": "prisma generate && prisma db push --skip-generate --accept-data-loss && (tsx prisma/seed.ts || echo 'seed skipped') && next build",
+    "build": "prisma generate && (prisma db push --skip-generate --accept-data-loss || echo 'db push skipped — DB asleep, will retry at runtime') && (tsx prisma/seed.ts || echo 'seed skipped') && next build",
+    "vercel-build": "prisma generate && (prisma db push --skip-generate --accept-data-loss || echo 'db push skipped — DB asleep, will retry at runtime') && (tsx prisma/seed.ts || echo 'seed skipped') && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
