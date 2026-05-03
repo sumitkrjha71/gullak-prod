@@ -39,7 +39,11 @@ export function SettingsRules({ rules, labels }: { rules: Rule[]; labels: Labels
     if (r.ok) {
       push({
         intent: 'success',
-        title: something,
+        title: action === 'pause'
+          ? labels.paused
+          : action === 'resume'
+          ? labels.active
+          : labels.stopped,
         ttlMs: 3000
       });      router.refresh();
     }
