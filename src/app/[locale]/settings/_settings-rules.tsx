@@ -37,8 +37,11 @@ export function SettingsRules({ rules, labels }: { rules: Rule[]; labels: Labels
     const body = action === 'pause' ? JSON.stringify({ ruleId, kind: 'indefinite' }) : JSON.stringify({ ruleId });
     const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
     if (r.ok) {
-      push({ intent: 'success', title: action === 'pause' ? labels.paused : action === 'resume' ? labels.active : labels.stopped });
-      router.refresh();
+      push({
+        intent: 'success',
+        title: something,
+        ttlMs: 3000
+      });      router.refresh();
     }
   };
 
