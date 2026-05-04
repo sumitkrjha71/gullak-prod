@@ -28,6 +28,7 @@ model User {
   updatedAt       DateTime @updatedAt
 
   goals           Goal[]
+  goalMemberships GoalMember[]
   rules           AutopilotRule[]
   mandates        Mandate[]
   transactions    Transaction[]
@@ -112,6 +113,7 @@ model Goal {
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type          String // emergency | emi | home | wedding | retirement | festival | education | vehicle
+  subType       String?   // 'beti' | 'maa-baap' | 'apna-sapna' (generational sub-template; null for plain goals)
   title         String
   targetPaise   BigInt
   savedPaise    BigInt    @default(0)
@@ -120,13 +122,34 @@ model Goal {
   deadline      DateTime?
   status        String    @default("active") // active | paused | completed
   isPrimary     Boolean   @default(false)
+  // Family Gullak (V5 M1)
+  isShared      Boolean   @default(false)
+  inviteCode    String?   @unique // short shareable code (e.g., "DOSTI4823"). Null for personal goals.
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   rules        AutopilotRule[]
   transactions Transaction[]
+  members      GoalMember[]
 
   @@index([userId, status])
+  @@index([inviteCode])
+}
+
+// V5 M1 — Family/Group Gullak. Tracks who's in a shared goal and how much they've put in.
+// The Goal.userId remains the original creator (the "owner"). Members reference the same Goal via this join table.
+model GoalMember {
+  id              String   @id @default(cuid())
+  goalId          String
+  goal            Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            String   @default("member") // 'owner' | 'member'
+  contributedPaise BigInt   @default(0)
+  joinedAt        DateTime @default(now())
+
+  @@unique([goalId, userId])
+  @@index([userId])
 }
 
 model AutopilotRule {

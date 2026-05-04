@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
+import { Users, ArrowRight } from 'lucide-react';
 import { readSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/client';
 import { progressPct, remainingPaise } from '@/lib/goals/math';
@@ -106,6 +108,42 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ loc
             <Sparkline values={cumul} width={300} height={64} />
           </div>
         </section>
+
+        {/* Family Gullak entry — V5 M1 */}
+        <Link
+          href={`/${locale}/goals/${goal.id}/family`}
+          className="haptic-press mt-4 flex items-center gap-3 px-4 py-3.5"
+          style={{
+            background: goal.isShared
+              ? 'linear-gradient(145deg, #f0fdf9, #e6f7f4)'
+              : 'linear-gradient(145deg, #FFF5EC, #FFE9D2)',
+            border: `1.5px solid ${goal.isShared ? 'var(--trust)' : 'var(--saffron)'}`,
+            borderRadius: 'var(--radius-card-lg)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
+          <div
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+            style={{
+              background: goal.isShared ? 'var(--trust)' : 'var(--saffron)',
+              color: '#fff',
+            }}
+            aria-hidden
+          >
+            <Users size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-extrabold" style={{ color: 'var(--text)' }}>
+              {goal.isShared ? 'Family Gullak' : 'Family ko bhi shamil karein'}
+            </div>
+            <div className="mt-0.5 text-[12px]" style={{ color: 'var(--muted)' }}>
+              {goal.isShared
+                ? 'Saathi ko dekhein, mil-jul ke kitna jod liya'
+                : 'Mummy-papa ya partner ko bulao — mil-jul ke sapna pakka'}
+            </div>
+          </div>
+          <ArrowRight size={16} style={{ color: goal.isShared ? 'var(--trust)' : 'var(--saffron)' }} aria-hidden />
+        </Link>
 
         <GoalActions
           locale={locale}
