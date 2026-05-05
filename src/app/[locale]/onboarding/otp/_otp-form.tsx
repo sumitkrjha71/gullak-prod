@@ -62,23 +62,17 @@ export function OtpForm({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ phone, code: finalCode, locale, referralCode }),
       });
-      let j: { ok?: boolean; error?: string; hint?: string } = {};
+      let j: { ok?: boolean } = {};
       try { j = await r.json(); } catch { /* non-JSON response */ }
       if (!r.ok || !j.ok) {
-        const errCode = j.error ?? `http_${r.status}`;
-        const hint = j.hint ? ` — ${j.hint}` : '';
-        if (errCode === 'wrong_code' || errCode === 'invalid_code') {
-          setError(labels.wrong);
-        } else {
-          setError(`${labels.wrong} (${errCode}${hint})`);
-        }
+        setError(labels.wrong);
         setCode('');
         submittedRef.current = false;
         return;
       }
       router.push(`/${locale}/onboarding/name`);
-    } catch (netErr) {
-      setError(`${labels.wrong} (network: ${(netErr as Error)?.message ?? 'unknown'})`);
+    } catch {
+      setError(labels.wrong);
       setCode('');
       submittedRef.current = false;
     } finally {

@@ -26,9 +26,12 @@ export function LanguageSelectScreen({
   currentLocale: string;
   labels: { title: string; sub: string; continue: string };
 }) {
-  const [picked, setPicked] = useState<Locale>(
-    (locales as readonly string[]).includes(currentLocale) ? (currentLocale as Locale) : 'en',
-  );
+  // First-launch policy: default selection is en or hi only. If the URL locale
+  // is something else (pa/kn/mr), fall back to 'en' — user can still pick any
+  // language explicitly from the list below.
+  const initialPick: Locale =
+    currentLocale === 'hi' ? 'hi' : 'en';
+  const [picked, setPicked] = useState<Locale>(initialPick);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 

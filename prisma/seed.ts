@@ -27,14 +27,19 @@ function dateKey(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
+// Deterministic demo userId — referenced by /api/auth/otp/verify fast-path.
+// Keep in sync with src/lib/auth/demo.ts → DEMO_USER_ID.
+const DEMO_USER_ID = 'demo-user-prod-001';
+
 async function main() {
   console.log('Seeding…');
 
-  // Wipe demo user if it exists.
-  await prisma.user.deleteMany({ where: { phone: '9999900000' } });
+  // Wipe demo user if it exists (cascade clears their goals/txns/etc).
+  await prisma.user.deleteMany({ where: { OR: [{ phone: '9999900000' }, { id: DEMO_USER_ID }] } });
 
   const user = await prisma.user.create({
     data: {
+      id: DEMO_USER_ID,
       phone: '9999900000',
       name: 'Lakshay',
       locale: 'en',

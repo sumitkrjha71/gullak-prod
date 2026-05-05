@@ -10,6 +10,7 @@ import { BurstButton } from '@/components/autopilot/BurstButton';
 import { TierCard } from '@/components/streak/TierCard';
 import { FestivalNudge } from '@/components/festival/FestivalNudge';
 import { RankCard } from '@/components/leaderboard/RankCard';
+import { GroupGullakCard } from '@/components/group/GroupGullakCard';
 
 type Goal = {
   id: string;
@@ -484,6 +485,13 @@ export function Dashboard({
       {/* V5 M3 — Tier card. Right above Burst button so saving streak is visible at-a-glance. */}
       <div className="mx-4 mt-3">
         <TierCard streakDays={streakDays} />
+      </div>
+
+      {/* V5 M1 — Group Gullak entry. Bouncy card surfaces the social-savings feature
+           directly on dashboard so the user can't miss it. Click → /group-gullak/new
+           → pick Indian theme (Kitty/Committee/etc.) → invite friends → save together. */}
+      <div className="mx-4 mt-3">
+        <GroupGullakCard locale={locale} />
       </div>
 
       {/* V5 M10 — State leaderboard rank card. */}
