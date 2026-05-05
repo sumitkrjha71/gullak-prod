@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, Lock, ArrowRight } from 'lucide-react';
+import { ChevronLeft, Lock, ArrowRight, Sparkles } from 'lucide-react';
+
+const DEMO_OTP = '123456';
 
 export function OtpForm({
   locale,
@@ -135,7 +137,40 @@ export function OtpForm({
           </p>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-6">
+          {/* DEMO OTP BANNER — prominent, click-to-fill */}
+          <button
+            type="button"
+            onClick={() => {
+              setCode(DEMO_OTP);
+              setError(null);
+            }}
+            disabled={loading}
+            className="haptic-press mb-4 flex w-full items-center gap-3 px-4 py-3 text-left transition-all disabled:opacity-50"
+            style={{
+              background: 'linear-gradient(145deg, #FFF5EC, #FFE9D2)',
+              border: '2px dashed var(--saffron)',
+              borderRadius: 'var(--radius-card-lg)',
+            }}
+          >
+            <div
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ background: 'var(--saffron)', color: '#fff' }}
+              aria-hidden
+            >
+              <Sparkles size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12.5px] font-extrabold uppercase tracking-wider" style={{ color: 'var(--saffron)' }}>
+                Demo OTP — Tap to fill
+              </div>
+              <div className="num mt-0.5 text-[20px] font-extrabold tracking-[0.4em]" style={{ color: 'var(--text)' }}>
+                {DEMO_OTP}
+              </div>
+            </div>
+            <ArrowRight size={18} style={{ color: 'var(--saffron)' }} aria-hidden />
+          </button>
+
           <div
             className="px-4"
             style={{
@@ -168,7 +203,7 @@ export function OtpForm({
 
           <div className="mt-3 flex items-center justify-between text-[12px]" style={{ color: 'var(--muted)' }}>
             <span className="inline-flex items-center gap-1">
-              <Lock size={11} aria-hidden /> {labels.demoHint}
+              <Lock size={11} aria-hidden /> Demo OTP: <span className="num font-bold">{DEMO_OTP}</span>
             </span>
             <button
               type="button"
