@@ -1,26 +1,24 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { TrustCheckpoint } from './_trust-checkpoint';
-import { readSession } from '@/lib/auth/session';
-import { prisma } from '@/lib/db/client';
 
-export default async function TrustCheckpointPage({ params }: { params: Promise<{ locale: string }> }) {
+// Pure render — NO DB calls during SSR. Name comes from sessionStorage on
+// the client (set by the name form). Same pattern as /onboarding/salary-day.
+export default async function TrustCheckpointPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale });
-
-  const session = await readSession();
-  let name = '';
-  if (session) {
-    const user = await prisma.user.findUnique({ where: { id: session.userId } });
-    name = user?.name ?? '';
-  }
 
   return (
     <TrustCheckpoint
       locale={locale}
       labels={{
         badge: t('trust.badge'),
-        title: t('trust.title', { name }),
+        // Placeholder __NAME__ swapped on client mount from sessionStorage.
+        titleTemplate: t('trust.title', { name: '__NAME__' }),
         cta: t('trust.cta'),
         footer: t('trust.footer'),
         items: [

@@ -19,20 +19,31 @@ export function NameForm({
   const [showGreeting, setShowGreeting] = useState(false);
   const submittedRef = useRef(false);
 
-  const submit = async () => {
+  const submit = () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
     setLoading(true);
+    const trimmed = name.trim();
+    // Persist locally so the next screen can show personalized greeting
+    // without depending on the API write completing first.
     try {
-      await fetch('/api/me/profile', {
+      if (trimmed.length > 0) sessionStorage.setItem('gullak_user_name', trimmed);
+    } catch {
+      // sessionStorage blocked — fine, downstream falls back to 'Dost'
+    }
+    // Fire-and-forget API write. Prisma client retries cold-starts internally.
+    // If it ultimately fails, the next page still loads and the user's journey
+    // isn't blocked — we don't need to read this back during onboarding.
+    try {
+      fetch('/api/me/profile', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() || null, locale }),
-      });
-      router.push(`/${locale}/onboarding/salary-day`);
-    } finally {
-      setLoading(false);
+        body: JSON.stringify({ name: trimmed || null, locale }),
+      }).catch(() => {});
+    } catch {
+      // ignore
     }
+    router.push(`/${locale}/onboarding/salary-day`);
   };
 
   // Friendly greeting toast — appears after pause once name is typed

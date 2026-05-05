@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -11,24 +11,41 @@ export function SalaryDayForm({
   labels,
 }: {
   locale: string;
-  labels: { title: string; sub: string; skip: string; cta: string };
+  labels: { titleTemplate: string; sub: string; skip: string; cta: string };
 }) {
   const router = useRouter();
   const [day, setDay] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const submit = async (d: number | null) => {
-    setLoading(true);
+  // Resolve name from sessionStorage (set by name form). Falls back to 'Dost'.
+  const [title, setTitle] = useState(() =>
+    labels.titleTemplate.replace(/__NAME__/g, 'Dost'),
+  );
+  useEffect(() => {
     try {
-      await fetch('/api/me/profile', {
+      const stored = sessionStorage.getItem('gullak_user_name');
+      const name = stored && stored.trim().length > 0 ? stored.trim() : 'Dost';
+      setTitle(labels.titleTemplate.replace(/__NAME__/g, name));
+    } catch {
+      // sessionStorage blocked — keep 'Dost' fallback
+    }
+  }, [labels.titleTemplate]);
+
+  const submit = (d: number | null) => {
+    if (loading) return;
+    setLoading(true);
+    // Fire-and-forget — don't block navigation on the POST. The Prisma client
+    // already retries cold-starts internally; if the POST eventually fails it
+    // does NOT affect the user's onward journey through onboarding.
+    try {
+      fetch('/api/me/profile', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ salaryDay: d, isSalaried: d !== null, locale }),
-      });
-      router.push(`/${locale}/trust`);
-    } finally {
-      setLoading(false);
+      }).catch(() => {});
+    } catch {
+      // ignore
     }
+    router.push(`/${locale}/trust`);
   };
 
   // Full 30-day calendar: 5 cols × 6 rows = 30 days
@@ -72,7 +89,7 @@ export function SalaryDayForm({
             className="mt-3"
             style={{ fontSize: 21, fontWeight: 800, lineHeight: 1.25, color: 'var(--text)' }}
           >
-            {labels.title}
+            {title}
           </h1>
           <p className="mt-1.5 text-[14px]" style={{ color: 'var(--muted)' }}>
             {labels.sub}

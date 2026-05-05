@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, ArrowRight } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Shield, ArrowRight } from 'lucide-react';
 type Item = { titleKey: string; descKey: string; bg: string; icon: string; info?: string };
 type Labels = {
   badge: string;
-  title: string;
+  titleTemplate: string;
   cta: string;
   footer: string;
   items: Item[];
@@ -18,19 +18,34 @@ export function TrustCheckpoint({ locale, labels }: { locale: string; labels: La
   const router = useRouter();
   const [infoOpen, setInfoOpen] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const accept = async () => {
-    setLoading(true);
+  // Resolve user's name from sessionStorage (set by name form). Falls back to 'Dost'.
+  const [title, setTitle] = useState(() =>
+    labels.titleTemplate.replace(/__NAME__/g, 'Dost'),
+  );
+  useEffect(() => {
     try {
-      await fetch('/api/me/lifecycle', {
+      const stored = sessionStorage.getItem('gullak_user_name');
+      const name = stored && stored.trim().length > 0 ? stored.trim() : 'Dost';
+      setTitle(labels.titleTemplate.replace(/__NAME__/g, name));
+    } catch {
+      // ignore — keep 'Dost' fallback
+    }
+  }, [labels.titleTemplate]);
+
+  const accept = () => {
+    if (loading) return;
+    setLoading(true);
+    // Fire-and-forget — never block onward navigation on the lifecycle PATCH.
+    try {
+      fetch('/api/me/lifecycle', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ to: 'TRUST_ACKNOWLEDGED' }),
-      });
-      router.push(`/${locale}/goals/new`);
-    } finally {
-      setLoading(false);
+      }).catch(() => {});
+    } catch {
+      // ignore
     }
+    router.push(`/${locale}/goals/new`);
   };
 
   return (
@@ -45,7 +60,7 @@ export function TrustCheckpoint({ locale, labels }: { locale: string; labels: La
         <div className="inline-flex items-center gap-1.5 rounded-pill bg-trust-soft px-3.5 py-1.5 text-[12px] font-bold text-trust">
           <Shield size={12} aria-hidden /> {labels.badge}
         </div>
-        <h1 className="mt-3 text-[22px] font-extrabold leading-tight text-text">{labels.title}</h1>
+        <h1 className="mt-3 text-[22px] font-extrabold leading-tight text-text">{title}</h1>
       </div>
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-2.5 overflow-y-auto px-5 py-4">
