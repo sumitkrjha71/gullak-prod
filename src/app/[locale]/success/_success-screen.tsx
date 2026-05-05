@@ -8,9 +8,9 @@ import CountUp from 'react-countup';
 import { projectCorpus } from '@/lib/autopilot/calculator';
 
 type Labels = {
-  title: string;
+  titleTemplate: string;
   sub: string;
-  tagline: string;
+  taglineTemplate: string;
   fiveYearLabel: string;
   fiveYearSub: string;
   daily: string;
@@ -24,16 +24,32 @@ type Labels = {
 
 export function SuccessScreen({
   locale,
-  amount,
   labels,
 }: {
   locale: string;
-  name: string;
-  amount: number;
   labels: Labels;
 }) {
   const [showConfetti, setShowConfetti] = useState(true);
   const [coinsDone, setCoinsDone] = useState(false);
+  // Hydrate name + daily amount from sessionStorage. Sensible fallbacks.
+  const [name, setName] = useState('Dost');
+  const [amount, setAmount] = useState(20);
+  useEffect(() => {
+    try {
+      const storedName = sessionStorage.getItem('gullak_user_name');
+      if (storedName && storedName.trim().length > 0) setName(storedName.trim());
+      const ruleRaw = sessionStorage.getItem('gullak_pending_rule');
+      if (ruleRaw) {
+        const parsed = JSON.parse(ruleRaw);
+        if (typeof parsed?.dailyRupees === 'number' && parsed.dailyRupees > 0) {
+          setAmount(parsed.dailyRupees);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+  const title = labels.titleTemplate.replace(/__NAME__/g, name);
 
   useEffect(() => {
     const t1 = setTimeout(() => setCoinsDone(true), 2200);
@@ -160,7 +176,7 @@ export function SuccessScreen({
           letterSpacing: -0.4,
         }}
       >
-        {labels.title}
+        {title}
       </h1>
       <p
         className="mt-1 text-[15px] font-semibold"

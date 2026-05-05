@@ -1,9 +1,9 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { CommitmentForm } from './_commitment-form';
-import { readSession } from '@/lib/auth/session';
-import { prisma } from '@/lib/db/client';
-import { suggestedDailyPaise, suggestedSweepPaise } from '@/lib/autopilot/defaults';
 
+// Pure render — NO DB calls. Goal data + suggested amount come from
+// sessionStorage on the client (set by /goals/new/amount form). The form
+// uses a sensible default if storage is empty.
 export default async function CommitmentPage({
   params,
   searchParams,
@@ -16,37 +16,11 @@ export default async function CommitmentPage({
   setRequestLocale(locale);
   const t = await getTranslations({ locale });
 
-  const session = await readSession();
-  let suggestedRupees = 20;
-  let goalName = '';
-  let goalTargetPaise = 0;
-  let goalDeadlineIso: string | null = null;
-
-  if (session) {
-    const u = await prisma.user.findUnique({ where: { id: session.userId } });
-    if (u) {
-      suggestedRupees =
-        Math.round((mode === 'sweep' ? suggestedSweepPaise(u.incomeRange) : suggestedDailyPaise(u.incomeRange)) / 100);
-    }
-    if (goal) {
-      const g = await prisma.goal.findUnique({ where: { id: goal } });
-      if (g && g.userId === session.userId) {
-        goalName = g.title;
-        goalTargetPaise = Number(g.targetPaise);
-        goalDeadlineIso = g.deadline ? g.deadline.toISOString() : null;
-      }
-    }
-  }
-
   return (
     <CommitmentForm
       locale={locale}
       goalId={goal ?? ''}
-      goalName={goalName}
-      goalTargetPaise={goalTargetPaise}
-      goalDeadlineIso={goalDeadlineIso}
       mode={(mode as 'fixed' | 'roundup' | 'sweep' | 'inflow_pct') ?? 'fixed'}
-      suggestedRupees={suggestedRupees}
       labels={{
         title: t('commit.title'),
         sub: t('commit.sub'),

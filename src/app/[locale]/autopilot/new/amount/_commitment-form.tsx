@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ArrowRight, Sparkles, TrendingUp } from 'lucide-react';
 import { planTiers, type SavingsPlan } from '@/lib/autopilot/calculator';
+import { generateClientId } from '@/lib/ids/client';
 
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -14,20 +15,12 @@ type Mode = 'fixed' | 'roundup' | 'sweep' | 'inflow_pct';
 export function CommitmentForm({
   locale,
   goalId,
-  goalName,
-  goalTargetPaise,
-  goalDeadlineIso,
   mode,
-  suggestedRupees,
   labels,
 }: {
   locale: string;
   goalId: string;
-  goalName: string;
-  goalTargetPaise: number;
-  goalDeadlineIso: string | null;
   mode: Mode;
-  suggestedRupees: number;
   labels: {
     title: string;
     sub: string;
@@ -59,6 +52,31 @@ export function CommitmentForm({
 
   const fmt = (n: number) => new Intl.NumberFormat('en-IN').format(n);
 
+  // Goal data is hydrated from sessionStorage on mount (set by /goals/new/amount).
+  // Sensible defaults if storage is empty so the page still renders.
+  const [goalTargetPaise, setGoalTargetPaise] = useState(0);
+  const [goalDeadlineIso, setGoalDeadlineIso] = useState<string | null>(null);
+  const [suggestedRupees, setSuggestedRupees] = useState(20);
+  const [goalName, setGoalName] = useState('Aapka sapna');
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('gullak_pending_goal');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.targetPaise === 'number') setGoalTargetPaise(parsed.targetPaise);
+        if (typeof parsed?.deadlineIso === 'string') setGoalDeadlineIso(parsed.deadlineIso);
+        if (typeof parsed?.title === 'string' && parsed.title.length > 0) setGoalName(parsed.title);
+        // 5-year goal target / 365×5 days = rough daily suggestion.
+        if (typeof parsed?.targetPaise === 'number' && parsed.targetPaise > 0) {
+          const sugDaily = Math.max(20, Math.round(parsed.targetPaise / 100 / (365 * 5)));
+          setSuggestedRupees(sugDaily);
+        }
+      }
+    } catch {
+      // ignore — defaults remain
+    }
+  }, []);
+
   // Compute three tiers if we have target+deadline; otherwise fallback to user input flow.
   const tiers = useMemo(() => {
     if (!goalDeadlineIso || !goalTargetPaise || mode !== 'fixed') return null;
@@ -78,27 +96,45 @@ export function CommitmentForm({
   const munafa = Math.round(yearly * 0.07);
   const total = yearly + munafa;
 
-  const submit = async (overrideInflowPct?: number) => {
+  const submit = (overrideInflowPct?: number) => {
+    if (loading) return;
     setLoading(true);
+    const ruleId = generateClientId();
+    const amountPaise = mode === 'roundup' || mode === 'inflow_pct' ? null : dailyRupees * 100;
+    // Cache rule for the mandate screen, which displays the daily amount.
     try {
-      const r = await fetch('/api/autopilot/rules', {
+      sessionStorage.setItem(
+        'gullak_pending_rule',
+        JSON.stringify({
+          id: ruleId,
+          goalId,
+          mode,
+          amountPaise,
+          dailyRupees: amountPaise ? dailyRupees : 20,
+        }),
+      );
+    } catch {
+      // ignore
+    }
+    // Fire-and-forget — server uses our id verbatim. User navigates instantly.
+    try {
+      fetch('/api/autopilot/rules', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          id: ruleId,
           goalId,
           mode,
-          amountPaise: mode === 'roundup' || mode === 'inflow_pct' ? null : dailyRupees * 100,
+          amountPaise,
           frequency: mode === 'fixed' ? 'daily' : null,
           roundUpTo: mode === 'roundup' ? 10 : null,
           inflowPct: mode === 'inflow_pct' ? overrideInflowPct ?? 500 : null,
         }),
-      });
-      const j = await r.json();
-      if (!r.ok) throw new Error('failed');
-      router.push(`/${locale}/mandate?rule=${j.id}`);
-    } finally {
-      setLoading(false);
+      }).catch(() => {});
+    } catch {
+      // ignore
     }
+    router.push(`/${locale}/mandate?rule=${ruleId}`);
   };
 
   const tierKey = (k: Tier) => ({

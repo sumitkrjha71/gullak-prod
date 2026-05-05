@@ -1,8 +1,8 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { AutopilotPicker } from './_autopilot-picker';
-import { prisma } from '@/lib/db/client';
-import { readSession } from '@/lib/auth/session';
 
+// Pure render — NO DB calls. Goal name is read from sessionStorage on the
+// client (set by /goals/new/amount form before navigation).
 export default async function AutopilotNewPage({
   params,
   searchParams,
@@ -15,20 +15,14 @@ export default async function AutopilotNewPage({
   setRequestLocale(locale);
   const t = await getTranslations({ locale });
 
-  let goalName = '';
-  const session = await readSession();
-  if (session && goal) {
-    const g = await prisma.goal.findUnique({ where: { id: goal } });
-    if (g && g.userId === session.userId) goalName = g.title;
-  }
-
   return (
     <AutopilotPicker
       locale={locale}
       goalId={goal ?? ''}
       labels={{
         title: t('autopilot.title'),
-        sub: t('autopilot.sub', { goal: goalName }),
+        // Placeholder __GOAL__ swapped at the client from sessionStorage.
+        subTemplate: t('autopilot.sub', { goal: '__GOAL__' }),
         fixedTitle: t('autopilot.fixed.title'),
         fixedDesc: t('autopilot.fixed.desc'),
         roundupTitle: t('autopilot.roundup.title'),

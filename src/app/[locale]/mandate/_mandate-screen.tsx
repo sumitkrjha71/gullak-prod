@@ -19,7 +19,7 @@ type Labels = {
   flowTitle: string;
   bank: string;
   gullak: string;
-  agree: string;
+  agreeTemplate: string;
   cta: string;
   trust: string;
   failure: string;
@@ -28,18 +28,32 @@ type Labels = {
 export function MandateScreen({
   locale,
   ruleId,
-  amount,
   labels,
 }: {
   locale: string;
   ruleId: string;
-  amount: number;
   labels: Labels;
 }) {
   const router = useRouter();
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  // Daily amount from sessionStorage (set by /autopilot/new/amount). Default ₹20.
+  const [amount, setAmount] = useState(20);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('gullak_pending_rule');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.dailyRupees === 'number' && parsed.dailyRupees > 0) {
+          setAmount(parsed.dailyRupees);
+        }
+      }
+    } catch {
+      // ignore — keep ₹20 default
+    }
+  }, []);
+  const agreeText = labels.agreeTemplate.replace(/__AMOUNT__/g, String(amount));
 
   const flightRef = useRef<HTMLDivElement>(null);
   const [distance, setDistance] = useState(120);
@@ -55,22 +69,32 @@ export function MandateScreen({
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const authorise = async () => {
+  const authorise = () => {
+    if (loading) return;
     setError(false);
     setLoading(true);
+    // Cache daily for the success screen which displays it.
     try {
-      const r = await fetch('/api/autopilot/mandate', {
+      const raw = sessionStorage.getItem('gullak_pending_rule');
+      const obj = raw ? JSON.parse(raw) : {};
+      sessionStorage.setItem(
+        'gullak_pending_rule',
+        JSON.stringify({ ...obj, mandateAuthorised: true, dailyRupees: amount }),
+      );
+    } catch {
+      // ignore
+    }
+    // Fire-and-forget — don't block the celebration screen on cold-start retries.
+    try {
+      fetch('/api/autopilot/mandate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ ruleId }),
-      });
-      if (!r.ok) throw new Error('mandate_failed');
-      router.push(`/${locale}/success?rule=${ruleId}`);
+      }).catch(() => {});
     } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
+      // ignore
     }
+    router.push(`/${locale}/success?rule=${ruleId}`);
   };
 
   const fmt = (n: number) => new Intl.NumberFormat('en-IN').format(n);
@@ -237,7 +261,7 @@ export function MandateScreen({
             {agreed && <Check size={14} className="text-white" />}
           </span>
           <span className="text-[12.5px] leading-relaxed" style={{ color: 'var(--muted)' }}>
-            {labels.agree}
+            {agreeText}
           </span>
         </button>
 

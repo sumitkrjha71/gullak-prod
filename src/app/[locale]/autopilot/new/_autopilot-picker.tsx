@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -18,7 +18,7 @@ export function AutopilotPicker({
   goalId: string;
   labels: {
     title: string;
-    sub: string;
+    subTemplate: string;
     fixedTitle: string;
     fixedDesc: string;
     roundupTitle: string;
@@ -38,6 +38,20 @@ export function AutopilotPicker({
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode | null>('fixed');
+  // Resolve goal name from sessionStorage (set by /goals/new/amount before nav).
+  const [sub, setSub] = useState(() => labels.subTemplate.replace(/__GOAL__/g, 'Aapka sapna'));
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('gullak_pending_goal');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const title = typeof parsed?.title === 'string' && parsed.title.length > 0 ? parsed.title : 'Aapka sapna';
+        setSub(labels.subTemplate.replace(/__GOAL__/g, title));
+      }
+    } catch {
+      // ignore
+    }
+  }, [labels.subTemplate]);
 
   const cards: {
     id: Mode;
@@ -125,7 +139,7 @@ export function AutopilotPicker({
           {labels.title}
         </h1>
         <p className="mt-1 text-[13.5px]" style={{ color: 'var(--muted)' }}>
-          {labels.sub}
+          {sub}
         </p>
       </div>
 

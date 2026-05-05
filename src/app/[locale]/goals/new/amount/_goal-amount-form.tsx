@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ArrowRight, Calendar } from 'lucide-react';
+import { generateClientId } from '@/lib/ids/client';
 
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -65,26 +66,45 @@ export function GoalAmountForm({
     ];
   }, [suggestedRupees]);
 
-  const submit = async () => {
+  const submit = () => {
+    if (loading) return;
     setLoading(true);
+    const deadline = new Date(year, month, 1);
+    const targetPaise = rupees * 100;
+    // Client-generated id — server uses it verbatim.
+    const goalId = generateClientId();
+    // Cache for downstream pages (autopilot picker, commitment form).
     try {
-      const deadline = new Date(year, month, 1);
-      const r = await fetch('/api/goals', {
+      sessionStorage.setItem(
+        'gullak_pending_goal',
+        JSON.stringify({
+          id: goalId,
+          type,
+          title: goalName,
+          targetPaise,
+          deadlineIso: deadline.toISOString(),
+        }),
+      );
+    } catch {
+      // sessionStorage blocked — downstream falls back to placeholders
+    }
+    // Fire-and-forget the API write. The user navigates immediately.
+    try {
+      fetch('/api/goals', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          id: goalId,
           type,
           title: goalName,
-          targetPaise: rupees * 100,
+          targetPaise,
           deadline: deadline.toISOString(),
         }),
-      });
-      const j = await r.json();
-      if (!r.ok) throw new Error('failed');
-      router.push(`/${locale}/autopilot/new?goal=${j.id}`);
-    } finally {
-      setLoading(false);
+      }).catch(() => {});
+    } catch {
+      // ignore
     }
+    router.push(`/${locale}/autopilot/new?goal=${goalId}`);
   };
 
   const formatInr = (r: number) => '₹' + new Intl.NumberFormat('en-IN').format(r);
