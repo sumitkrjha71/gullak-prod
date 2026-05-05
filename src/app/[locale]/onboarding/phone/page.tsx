@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { PhoneForm } from './_phone-form';
 
