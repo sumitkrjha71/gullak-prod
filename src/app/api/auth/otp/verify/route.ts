@@ -4,10 +4,11 @@ import { createSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/client';
 import { dispatch } from '@/lib/events/bus';
 import { transitionUser } from '@/lib/state-machine/user';
+import { findReferrerByCode, recordReferralAndReward } from '@/lib/referrals/codes';
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, code, locale } = await req.json();
+    const { phone, code, locale, referralCode } = await req.json();
     if (typeof phone !== 'string' || !isValidIndianPhone(phone)) {
       return NextResponse.json({ ok: false, error: 'invalid_phone' }, { status: 400 });
     }
@@ -16,6 +17,19 @@ export async function POST(req: NextRequest) {
     }
     const ok = (await verifyOtp(phone, code)).ok;
     if (!ok) return NextResponse.json({ ok: false, error: 'wrong_code' }, { status: 401 });
+
+    // V5 M9 — resolve referral code BEFORE upsert so we know if user is new.
+    let referrer: { id: string; code: string } | null = null;
+    if (typeof referralCode === 'string' && referralCode.trim().length > 0) {
+      try {
+        referrer = await findReferrerByCode(referralCode.trim());
+      } catch {
+        // bad code — silently ignore, signup still proceeds
+      }
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { phone } });
+    const wasNewUser = !existingUser;
 
     let user;
     try {
@@ -27,6 +41,7 @@ export async function POST(req: NextRequest) {
           locale: typeof locale === 'string' ? locale : 'en',
           lifecycleState: 'NEW',
           preferences: { create: {} },
+          referredBy: referrer?.id ?? null,
         },
       });
     } catch (dbErr) {
@@ -58,6 +73,20 @@ export async function POST(req: NextRequest) {
         });
       } catch (sideErr) {
         console.warn('[otp/verify] post-login side effects failed (non-fatal):', sideErr);
+      }
+    }
+
+    // V5 M9 — if this was a new user with a valid referral code, record + reward.
+    if (wasNewUser && referrer && referrer.id !== user.id) {
+      try {
+        await recordReferralAndReward({
+          referrerUserId: referrer.id,
+          refereeUserId: user.id,
+          refereePhone: phone,
+          code: referrer.code,
+        });
+      } catch (refErr) {
+        console.warn('[otp/verify] referral recording failed (non-fatal):', refErr);
       }
     }
 

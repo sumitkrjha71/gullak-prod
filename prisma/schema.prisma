@@ -24,6 +24,10 @@ model User {
   lifecycleState  String   @default("NEW") // NEW | ONBOARDING | TRUST_ACKNOWLEDGED | GOAL_CREATED | AUTOPILOT_CONFIGURED | MANDATE_PENDING | ACTIVE | PAUSED
   kycCompleted    Boolean  @default(false)
   aaConsentLinkedAt DateTime?
+  // V5 M9 — referral
+  referralCode    String?   @unique
+  referredBy      String?   // userId of inviter, null for self-signup
+  // V5 M11 — push subscriptions stored as JSON array
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -41,6 +45,56 @@ model User {
   aaConsents      AAConsent[]
   loanOffers      LoanOffer[]
   loanApplications LoanApplication[]
+  referralsMade   Referral[] @relation("Referrer")
+  pushSubscriptions PushSubscription[]
+}
+
+// V5 M9 — Referral tracking. Real DB rows; reward is a mock ₹100 credit entry.
+model Referral {
+  id           String   @id @default(cuid())
+  referrerUserId String
+  referrer     User     @relation("Referrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  refereePhone String   // referee's phone at signup time (since refereeUserId might not exist yet)
+  refereeUserId String? // populated once referee creates account
+  code         String   // the invite code that was used
+  status       String   @default("PENDING") // PENDING | JOINED | REWARDED
+  rewardPaise  BigInt   @default(10000) // ₹100 default
+  joinedAt     DateTime?
+  rewardedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([referrerUserId, status])
+  @@index([refereeUserId])
+}
+
+// V5 M11 — Web Push subscriptions for sending notifications.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// V5 M10 — Daily snapshot of city/state-level leaderboards. Refreshed by cron.
+model LeaderboardSnapshot {
+  id        String   @id @default(cuid())
+  periodKey String   // YYYY-MM format
+  scope     String   // 'state' | 'city' | 'all'
+  scopeKey  String   // e.g., 'KA' for state Karnataka, 'BLR' for city Bangalore, 'all' for global
+  rank      Int
+  userId    String
+  anonName  String   // first letter + initial
+  savedPaise BigInt
+  munafaPaise BigInt
+  createdAt DateTime @default(now())
+
+  @@index([periodKey, scope, scopeKey])
+  @@index([userId])
 }
 
 // Account Aggregator consent — tracks what the user authorised the AA to fetch.

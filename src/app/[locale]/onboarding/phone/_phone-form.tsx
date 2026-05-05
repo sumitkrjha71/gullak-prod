@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Lock, ChevronLeft, ArrowRight } from 'lucide-react';
+import { Lock, ChevronLeft, ArrowRight, Gift } from 'lucide-react';
 
 export function PhoneForm({
   locale,
@@ -25,10 +25,34 @@ export function PhoneForm({
   };
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const valid = /^[6-9]\d{9}$/.test(phone);
+
+  // V5 M9 — capture ?ref= referral code from URL on first render. Stash in
+  // sessionStorage so the OTP screen can pass it along to verify.
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref && /^[A-Z0-9]{4,12}$/i.test(ref)) {
+      const upper = ref.toUpperCase();
+      setReferralCode(upper);
+      try {
+        sessionStorage.setItem('gullak_referral_code', upper);
+      } catch {
+        // ignore
+      }
+    } else {
+      try {
+        const stored = sessionStorage.getItem('gullak_referral_code');
+        if (stored) setReferralCode(stored);
+      } catch {
+        // ignore
+      }
+    }
+  }, [searchParams]);
 
   const submit = async () => {
     setError(null);
@@ -139,6 +163,18 @@ export function PhoneForm({
             <span aria-hidden>🔒 </span>
             {labels.why}
           </p>
+
+          {referralCode && (
+            <div
+              className="mt-3 flex items-center gap-2 rounded-card-lg px-3 py-2.5"
+              style={{ background: 'var(--growth-soft)', border: '1px solid #cfe5d4' }}
+            >
+              <Gift size={14} style={{ color: 'var(--growth)' }} aria-hidden />
+              <span className="text-[12px]" style={{ color: 'var(--text)' }}>
+                Referral code <span className="num font-bold" style={{ color: 'var(--growth)' }}>{referralCode}</span> — signup ke baad ₹100 milega!
+              </span>
+            </div>
+          )}
 
           <button
             onClick={submit}

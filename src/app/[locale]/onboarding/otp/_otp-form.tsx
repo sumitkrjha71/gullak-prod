@@ -47,11 +47,18 @@ export function OtpForm({
     submittedRef.current = true;
     setError(null);
     setLoading(true);
+    // V5 M9 — pass-through referral code captured by phone form
+    let referralCode: string | null = null;
+    try {
+      referralCode = sessionStorage.getItem('gullak_referral_code');
+    } catch {
+      // ignore
+    }
     try {
       const r = await fetch('/api/auth/otp/verify', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ phone, code: finalCode, locale }),
+        body: JSON.stringify({ phone, code: finalCode, locale, referralCode }),
       });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error('wrong');
