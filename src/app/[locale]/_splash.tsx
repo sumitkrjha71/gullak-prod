@@ -89,12 +89,13 @@ export function SplashScreen({
     };
   }, []);
 
-  // Rotate the educational tip every 1.6s while loading is in progress.
+  // Rotate the educational tip every 2.2s while loading is in progress.
+  // Slower than the original 1.6s so the eye has time to read each line.
   useEffect(() => {
     if (loadingComplete) return;
     const iv = setInterval(() => {
       setTipIndex((i) => (i + 1) % LOADING_TIPS.length);
-    }, 1600);
+    }, 2200);
     return () => clearInterval(iv);
   }, [loadingComplete]);
 
@@ -150,7 +151,7 @@ export function SplashScreen({
       </Link>
 
       {/* === ACT 1 — SAVESTMENT at TOP, the headline === */}
-      <div className="mt-[14vh] flex w-full flex-col items-center px-6">
+      <div className="mt-[9vh] flex w-full flex-col items-center px-6">
         <div
           className="shimmer-text font-tiro"
           style={{
@@ -178,16 +179,16 @@ export function SplashScreen({
       </div>
 
       {/* === ACT 2 — Gullak pot drops + glows === */}
-      <div className="relative z-[2] mt-[5vh]">
+      <div className="relative z-[2] mt-[3vh]">
         <Image
           src="/assets/gullak-pot.png"
           alt="Gullak"
-          width={170}
-          height={140}
+          width={220}
+          height={184}
           priority
           style={{
-            width: 170,
-            height: 140,
+            width: 220,
+            height: 184,
             objectFit: 'contain',
             opacity: act >= 2 ? 1 : 0,
             animation:
@@ -337,12 +338,8 @@ export function SplashScreen({
         style={{ bottom: 'calc(28px + env(safe-area-inset-bottom))' }}
       >
         {!loadingComplete && (
-          <div
-            className="anim-fade-in flex flex-col items-center gap-3"
-            key={tipIndex}
-            style={{ animation: 'fadeIn 0.5s ease' }}
-          >
-            {/* Animated trust shield (replaces the old progress bar) */}
+          <div className="flex flex-col items-center gap-3">
+            {/* Constant trust shield (does not change) — brand statement. */}
             <div
               className="flex items-center gap-2 rounded-pill px-3 py-1.5"
               style={{
@@ -362,14 +359,17 @@ export function SplashScreen({
                 <ShieldCheck size={11} color="#FFF8F0" />
               </span>
               <span
-                className="text-[11px] font-bold tracking-wide"
-                style={{ color: '#FFE7B0' }}
+                className="text-[11px] font-extrabold tracking-wide"
+                style={{ color: '#FFE7B0', letterSpacing: 0.6 }}
               >
-                Aapka paisa, aapke naam par taiyaar ho raha hai…
+                Bharat ka Apni Bachatt
               </span>
             </div>
 
-            {/* Rotating educational tip — uses the loading window to teach */}
+            {/* Rotating educational tip — smooth opacity-only crossfade,
+                 no slide-up jump. The inner content remounts via key for
+                 the fresh fade-in animation. Outer wrapper is stable so the
+                 pill itself doesn't flicker. */}
             <div
               className="flex items-center gap-2.5 rounded-pill px-4 py-2"
               style={{
@@ -379,15 +379,21 @@ export function SplashScreen({
                 minHeight: 36,
               }}
             >
-              <span style={{ fontSize: 16 }} aria-hidden>
-                {LOADING_TIPS[tipIndex].icon}
-              </span>
-              <span
-                className="text-[12px] font-semibold"
-                style={{ color: '#FFF8F0', letterSpacing: 0.2 }}
+              <div
+                key={tipIndex}
+                className="flex items-center gap-2.5"
+                style={{ animation: 'tipCrossfade 0.9s ease' }}
               >
-                {LOADING_TIPS[tipIndex].text}
-              </span>
+                <span style={{ fontSize: 16 }} aria-hidden>
+                  {LOADING_TIPS[tipIndex].icon}
+                </span>
+                <span
+                  className="text-[12px] font-semibold"
+                  style={{ color: '#FFF8F0', letterSpacing: 0.2 }}
+                >
+                  {LOADING_TIPS[tipIndex].text}
+                </span>
+              </div>
             </div>
 
             {/* Tip-progress dots — visual rhythm without a literal loading bar */}

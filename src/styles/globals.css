@@ -153,6 +153,11 @@
     0%, 100% { transform: scale(1); }
     50%      { transform: scale(1.04); }
   }
+  /* Smooth opacity-only crossfade for rotating tips. No transform, no jump. */
+  @keyframes tipCrossfade {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+  }
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(18px); }
     to   { opacity: 1; transform: translateY(0); }
