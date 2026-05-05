@@ -5,6 +5,8 @@ import { TrendingUp, Shield, Coins, FileText, Info } from 'lucide-react';
 import { readSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/client';
 import { BottomNav } from '@/components/nav/BottomNav';
+import { MunafaChart } from '@/components/money/MunafaChart';
+import { buildChartSeries } from '@/lib/money/series';
 
 const INSTRUMENTS = [
   {
@@ -45,6 +47,13 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
     where: { userId: session.userId, status: 'active' },
   });
 
+  // Pull last 365d of successful transactions for the chart.
+  const since = new Date(Date.now() - 365 * 86400000);
+  const txns = await prisma.transaction.findMany({
+    where: { userId: session.userId, status: 'success', createdAt: { gte: since } },
+    orderBy: { createdAt: 'asc' },
+  });
+
   const totalSaved = goals.reduce((s, g) => s + Number(g.savedPaise), 0);
   const totalGrowth = goals.reduce((s, g) => s + Number(g.growthPaise), 0);
   const totalInvested = goals.reduce((s, g) => s + Number(g.investedPaise), 0);
@@ -52,6 +61,17 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
 
   const totalDisplay = totalSaved + totalGrowth;
   const growthPct = totalSaved > 0 ? ((totalGrowth / totalSaved) * 100).toFixed(2) : '0.00';
+
+  const chartSeries = buildChartSeries({
+    userId: session.userId,
+    transactions: txns.map((t) => ({
+      amountPaise: Number(t.amountPaise),
+      status: t.status,
+      createdAt: t.createdAt,
+    })),
+    totalSavedRupees: Math.round(totalSaved / 100),
+    totalMunafaRupees: Math.round(totalGrowth / 100),
+  });
 
   return (
     <main
@@ -123,6 +143,11 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
               </div>
             </div>
           ))}
+        </div>
+
+        {/* V5 M4 — Munafa line chart (30/90/365 toggle) */}
+        <div className="mt-4">
+          <MunafaChart series={chartSeries} variant="full" height={150} />
         </div>
 
         {/* Instrument breakdown */}
