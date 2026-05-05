@@ -322,6 +322,35 @@ export function Dashboard({
         </div>
       </motion.section>
 
+      {/* V5 M5 — Digital Gold framing strip. Bharat's 10K-tonnes-hoarded gold love. */}
+      {totalSavedRupees > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.4 }}
+          className="mx-4 mt-2 flex items-center gap-2.5 rounded-card-lg px-3 py-2.5"
+          style={{
+            background: 'linear-gradient(135deg, #fff5d6, #fff9e6)',
+            border: '1px solid #f0d97a',
+          }}
+        >
+          <div
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+            style={{ background: '#D4A017', color: '#fff', fontSize: 16 }}
+            aria-hidden
+          >
+            🪙
+          </div>
+          <div className="flex-1 text-[12px]" style={{ color: 'var(--text)', lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 700 }}>Aaj Gullak ne aapke liye </span>
+            <span className="num font-extrabold" style={{ color: '#9a7a00' }}>
+              ₹{fmt(Math.max(1, Math.round(totalSavedRupees * 0.0007)))}
+            </span>
+            <span style={{ fontWeight: 700 }}> ka digital sona khareeda</span>
+          </div>
+        </motion.div>
+      )}
+
       {/* Zone E — Goal */}
       <motion.section
         data-walkthrough="goal"

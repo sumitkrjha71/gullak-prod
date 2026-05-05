@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db/client';
 import { BottomNav } from '@/components/nav/BottomNav';
 import { MunafaChart } from '@/components/money/MunafaChart';
 import { buildChartSeries } from '@/lib/money/series';
+import { InstrumentPie } from '@/components/money/InstrumentPie';
 
 const INSTRUMENTS = [
   {
@@ -150,68 +151,9 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
           <MunafaChart series={chartSeries} variant="full" height={150} />
         </div>
 
-        {/* Instrument breakdown */}
-        <h2 className="mt-6 text-[13px] font-bold uppercase tracking-widest" style={{ color: 'var(--terracotta)' }}>
-          Aapka paisa abhi yahan hai
-        </h2>
-
-        <div className="mt-3 flex flex-col gap-3">
-          {INSTRUMENTS.map((it) => (
-            <details
-              key={it.name}
-              className="group overflow-hidden"
-              style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-card-lg)',
-                boxShadow: 'var(--shadow-card)',
-              }}
-            >
-              <summary
-                className="haptic-press flex cursor-pointer list-none items-center gap-3 p-4"
-                style={{ outline: 'none' }}
-              >
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-card"
-                  style={{ background: it.color, color: '#FFF8F0', fontSize: 22 }}
-                  aria-hidden
-                >
-                  {it.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between">
-                    <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)' }}>
-                      {it.name}
-                    </span>
-                    <span
-                      className="num text-[14px] font-extrabold"
-                      style={{ color: it.color }}
-                    >
-                      {it.pct}%
-                    </span>
-                  </div>
-                  <div className="mt-0.5 text-[11.5px]" style={{ color: 'var(--muted)' }}>
-                    {it.sub}
-                  </div>
-                  <div
-                    className="mt-2 h-[5px] overflow-hidden rounded-full"
-                    style={{ background: 'var(--border)' }}
-                  >
-                    <div
-                      className="h-full"
-                      style={{ width: `${it.pct}%`, background: it.color }}
-                    />
-                  </div>
-                </div>
-              </summary>
-              <div
-                className="px-4 pb-4 pt-1 text-[12.5px] leading-relaxed"
-                style={{ color: 'var(--muted)' }}
-              >
-                {it.body}
-              </div>
-            </details>
-          ))}
+        {/* V5 M5 — Instrument allocation pie chart (replaces static breakdown) */}
+        <div className="mt-4">
+          <InstrumentPie size={220} totalRupees={Math.round(totalDisplay / 100)} />
         </div>
 
         {/* Why these instruments */}
