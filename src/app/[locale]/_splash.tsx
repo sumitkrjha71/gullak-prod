@@ -57,15 +57,15 @@ export function SplashScreen({
         if (id > 7) clearInterval(iv);
       }, 280);
     }, 7000);
-    // Logged-in users see a shortened splash (~3s — long enough to catch the
-    // brand reveal) then land on the dashboard. Fresh users get the full ~9s
-    // cinematic and then enter language-select.
+    // Logged-in users see an 8-second splash (full brand experience) then
+    // land on the dashboard. Fresh users get the full ~9s cinematic before
+    // entering language-select.
     const tAuto = setTimeout(
       () => {
         if (isLoggedIn) router.push(`/${locale}/home`);
         else router.push(`/${locale}/language-select`);
       },
-      isLoggedIn ? 3000 : 9200,
+      isLoggedIn ? 8000 : 9200,
     );
     return () => {
       clearTimeout(t1);
