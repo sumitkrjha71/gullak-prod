@@ -2,11 +2,12 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Globe, Shield, Bell, PauseCircle, HelpCircle, LogOut, Trophy, ChevronRight } from 'lucide-react';
+import { Globe, Shield, Bell, PauseCircle, HelpCircle, LogOut, Trophy, ChevronRight, Gift } from 'lucide-react';
 import { readSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/client';
 import { BottomNav } from '@/components/nav/BottomNav';
 import { localeLabels, locales } from '@/lib/i18n/config';
+import { PushSubscribeButton } from '@/components/push/PushSubscribeButton';
 
 export default async function ProfilePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -109,6 +110,73 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
           <Stat icon="🏆" label="Longest" value={`${user.streak?.longestDays ?? 0} din`} />
           <Stat icon="💰" label="Munafa" value={`₹${fmt(totalGrowth)}`} />
         </div>
+
+        {/* V5 M9 — Refer & Earn entry */}
+        <Link
+          href={`/${locale}/refer`}
+          className="haptic-press mt-5 flex items-center gap-3 px-4 py-3.5"
+          style={{
+            background: 'linear-gradient(145deg, #f0f7e6, #e6f7f4)',
+            border: '1.5px solid var(--growth)',
+            borderRadius: 'var(--radius-card-lg)',
+          }}
+        >
+          <div
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+            style={{ background: 'var(--growth)', color: '#fff' }}
+            aria-hidden
+          >
+            <Gift size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-extrabold" style={{ color: 'var(--text)' }}>
+              Refer & Earn ₹100
+            </div>
+            <div className="mt-0.5 text-[12px]" style={{ color: 'var(--muted)' }}>
+              Yaar ko Gullak dilao, dono ko ₹100
+            </div>
+          </div>
+          <ChevronRight size={16} style={{ color: 'var(--growth)' }} aria-hidden />
+        </Link>
+
+        {/* V5 M11 — Push notifications */}
+        <div className="mt-4">
+          <h3
+            className="mb-2 px-1 text-[11.5px] font-bold uppercase tracking-widest"
+            style={{ color: 'var(--muted-light)' }}
+          >
+            Push Notifications
+          </h3>
+          <PushSubscribeButton />
+        </div>
+
+        {/* V5 M7 — Investor pitch link */}
+        <Link
+          href={`/${locale}/pitch`}
+          className="haptic-press mt-4 flex items-center gap-3 px-4 py-3"
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-card-lg)',
+          }}
+        >
+          <div
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
+            style={{ background: 'var(--bg-soft)', color: 'var(--saffron)' }}
+            aria-hidden
+          >
+            <Trophy size={16} />
+          </div>
+          <div className="flex-1">
+            <div className="text-[13px] font-bold" style={{ color: 'var(--text)' }}>
+              Gullak ka safar
+            </div>
+            <div className="text-[11px]" style={{ color: 'var(--muted)' }}>
+              Bharat ka pehla Savestment platform — kahaani
+            </div>
+          </div>
+          <ChevronRight size={16} style={{ color: 'var(--muted)' }} aria-hidden />
+        </Link>
 
         {/* Sections */}
         <Section title="Settings">
