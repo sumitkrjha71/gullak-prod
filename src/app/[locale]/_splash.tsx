@@ -4,8 +4,22 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ArrowRight, ShieldCheck, TrendingUp } from 'lucide-react';
 
 type Coin = { id: number; left: number; delay: number };
+
+// Rotating educational tips shown during the loading window. Each one is a
+// short Hinglish trust-or-feature line — read aloud, sounds like a friend
+// telling you what's cool about Gullak. Cycles every ~2 seconds so a viewer
+// who hangs on the splash is steadily learning.
+const LOADING_TIPS: { icon: string; text: string }[] = [
+  { icon: '🔒', text: 'Aapka paisa, aapke naam par — RBI partners' },
+  { icon: '🪙', text: 'Roz ₹20 se shuruat — koi pressure nahi' },
+  { icon: '🏠', text: 'Family Gullak — saath bachat, saath manzil' },
+  { icon: '🪔', text: 'Festival aane se pehle ready — hyper-local nudges' },
+  { icon: '📈', text: '7-9% Munafa — tinka-tinka compound hota hai' },
+  { icon: '🤝', text: '5 lakh+ Bharat ke users ne bharosa kiya hai' },
+];
 
 /**
  * V4 Splash — cinematic 4-act, auto-advances under 10s.
@@ -37,6 +51,12 @@ export function SplashScreen({
   const [coins, setCoins] = useState<Coin[]>([]);
   const [typedChars, setTypedChars] = useState(0);
   const [gPos, setGPos] = useState<{ left: number; top: number } | null>(null);
+  // Loading-window state. While `loadingComplete` is false, we show the
+  // rotating educational tip card + animated trust shield. Once true, those
+  // disappear and a 'Chaliye shuru karein' CTA appears that the user must
+  // tap to proceed. NO automatic timeout-based navigation.
+  const [loadingComplete, setLoadingComplete] = useState(false);
+  const [tipIndex, setTipIndex] = useState(0);
   const router = useRouter();
   const gRef = useRef<HTMLSpanElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,24 +77,31 @@ export function SplashScreen({
         if (id > 7) clearInterval(iv);
       }, 280);
     }, 7000);
-    // Logged-in users see an 8-second splash (full brand experience) then
-    // land on the dashboard. Fresh users get the full ~9s cinematic before
-    // entering language-select.
-    const tAuto = setTimeout(
-      () => {
-        if (isLoggedIn) router.push(`/${locale}/home`);
-        else router.push(`/${locale}/language-select`);
-      },
-      isLoggedIn ? 8000 : 9200,
-    );
+    // Loading completes at ~8s, revealing the proceed CTA. The user must
+    // tap to navigate forward — no auto-redirect.
+    const tDone = setTimeout(() => setLoadingComplete(true), 8000);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
-      clearTimeout(tAuto);
+      clearTimeout(tDone);
     };
-  }, [locale, router, isLoggedIn]);
+  }, []);
+
+  // Rotate the educational tip every 1.6s while loading is in progress.
+  useEffect(() => {
+    if (loadingComplete) return;
+    const iv = setInterval(() => {
+      setTipIndex((i) => (i + 1) % LOADING_TIPS.length);
+    }, 1600);
+    return () => clearInterval(iv);
+  }, [loadingComplete]);
+
+  const proceed = () => {
+    if (isLoggedIn) router.push(`/${locale}/home`);
+    else router.push(`/${locale}/language-select`);
+  };
 
   // Typewriter cadence — variable 60–110ms per char. Starts when act >= 3.
   useEffect(() => {
@@ -281,36 +308,127 @@ export function SplashScreen({
         />
       </div>
 
-      {/* === Bottom progress bar (subtle) — fills as we approach auto-advance === */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 overflow-hidden rounded-full"
+      {/* === Investor CTA — sits just below the tagline. Alluring pill so any
+           investor scrolling through the demo can't miss the pitch deck. === */}
+      <Link
+        href={`/${locale}/pitch`}
+        className="haptic-press z-20 mt-4 inline-flex items-center gap-2 rounded-pill px-4 py-2 text-[12.5px] font-extrabold transition-all"
         style={{
-          bottom: 'calc(36px + env(safe-area-inset-bottom))',
-          width: 120,
-          height: 3,
-          background: 'rgba(255,255,255,0.08)',
+          background: 'linear-gradient(135deg, rgba(245,200,66,0.95), rgba(232,101,10,0.95))',
+          color: '#2A1500',
+          border: '1.5px solid rgba(245,200,66,0.6)',
+          boxShadow: '0 8px 22px rgba(232,101,10,0.35), 0 0 0 4px rgba(245,200,66,0.10)',
+          opacity: act >= 3 ? 1 : 0,
+          transform: act >= 3 ? 'translateY(0)' : 'translateY(8px)',
+          transition: 'opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s',
+          letterSpacing: 0.3,
         }}
       >
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            background: 'linear-gradient(90deg, #E8650A, #D4A017)',
-            transformOrigin: 'left',
-            transform: `scaleX(${act === 0 ? 0 : Math.min((act + 1) / 5, 1)})`,
-            transition: 'transform 1.5s ease',
-          }}
-        />
-      </div>
+        <TrendingUp size={14} aria-hidden />
+        For Investors · Pitch Dekhein
+        <ArrowRight size={14} aria-hidden />
+      </Link>
+
+      {/* === Bottom area — flips between (a) trust + rotating tip while loading
+           and (b) a 'Chaliye shuru karein' CTA after loading completes. NO
+           auto-advance: the user must tap. === */}
       <div
-        className="absolute left-0 right-0 text-center text-[10.5px] tracking-[0.18em]"
-        style={{
-          bottom: 'calc(20px + env(safe-area-inset-bottom))',
-          color: 'rgba(255, 248, 240, 0.45)',
-          textTransform: 'uppercase',
-        }}
+        className="absolute left-1/2 -translate-x-1/2 w-full max-w-[420px] px-6"
+        style={{ bottom: 'calc(28px + env(safe-area-inset-bottom))' }}
       >
-        Loading your Gullak…
+        {!loadingComplete && (
+          <div
+            className="anim-fade-in flex flex-col items-center gap-3"
+            key={tipIndex}
+            style={{ animation: 'fadeIn 0.5s ease' }}
+          >
+            {/* Animated trust shield (replaces the old progress bar) */}
+            <div
+              className="flex items-center gap-2 rounded-pill px-3 py-1.5"
+              style={{
+                background: 'rgba(245,200,66,0.10)',
+                border: '1px solid rgba(245,200,66,0.30)',
+                boxShadow: '0 0 18px rgba(245,200,66,0.18)',
+              }}
+            >
+              <span
+                className="flex h-5 w-5 items-center justify-center rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, #1A7A4A, #0E8C7A)',
+                  animation: 'pulseScale 1.6s ease-in-out infinite',
+                }}
+                aria-hidden
+              >
+                <ShieldCheck size={11} color="#FFF8F0" />
+              </span>
+              <span
+                className="text-[11px] font-bold tracking-wide"
+                style={{ color: '#FFE7B0' }}
+              >
+                Aapka paisa, aapke naam par taiyaar ho raha hai…
+              </span>
+            </div>
+
+            {/* Rotating educational tip — uses the loading window to teach */}
+            <div
+              className="flex items-center gap-2.5 rounded-pill px-4 py-2"
+              style={{
+                background: 'rgba(255, 248, 240, 0.06)',
+                border: '1px solid rgba(255, 248, 240, 0.12)',
+                backdropFilter: 'blur(6px)',
+                minHeight: 36,
+              }}
+            >
+              <span style={{ fontSize: 16 }} aria-hidden>
+                {LOADING_TIPS[tipIndex].icon}
+              </span>
+              <span
+                className="text-[12px] font-semibold"
+                style={{ color: '#FFF8F0', letterSpacing: 0.2 }}
+              >
+                {LOADING_TIPS[tipIndex].text}
+              </span>
+            </div>
+
+            {/* Tip-progress dots — visual rhythm without a literal loading bar */}
+            <div className="flex items-center gap-1.5">
+              {LOADING_TIPS.map((_, i) => (
+                <span
+                  key={i}
+                  className="rounded-full transition-all"
+                  style={{
+                    width: i === tipIndex ? 18 : 5,
+                    height: 5,
+                    background:
+                      i === tipIndex
+                        ? 'linear-gradient(90deg, #E8650A, #D4A017)'
+                        : 'rgba(255,255,255,0.25)',
+                  }}
+                  aria-hidden
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {loadingComplete && (
+          <button
+            type="button"
+            onClick={proceed}
+            className="haptic-press anim-fade-in inline-flex w-full items-center justify-center gap-2 rounded-pill py-3.5 text-[15px] font-extrabold"
+            style={{
+              background: 'linear-gradient(135deg, #E8650A 0%, #D4A017 100%)',
+              color: '#FFF8F0',
+              boxShadow:
+                '0 10px 28px rgba(232,101,10,0.45), 0 0 0 4px rgba(245,200,66,0.18)',
+              letterSpacing: 0.4,
+              animation: 'fadeIn 0.6s ease, pulseScale 2.4s ease-in-out infinite',
+            }}
+          >
+            Chaliye shuru karein
+            <ArrowRight size={18} aria-hidden />
+          </button>
+        )}
       </div>
     </main>
   );
