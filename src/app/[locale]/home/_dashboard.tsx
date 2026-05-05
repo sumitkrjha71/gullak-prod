@@ -9,6 +9,7 @@ import { Walkthrough } from '@/components/flow/Walkthrough';
 import { BurstButton } from '@/components/autopilot/BurstButton';
 import { TierCard } from '@/components/streak/TierCard';
 import { FestivalNudge } from '@/components/festival/FestivalNudge';
+import { RankCard } from '@/components/leaderboard/RankCard';
 
 type Goal = {
   id: string;
@@ -101,6 +102,13 @@ type FestivalProp = {
   states: string[];
   dates: string[];
 };
+type RankProp = {
+  rank: number;
+  scopeKey: string;
+  totalSavers: number;
+  percentile: number;
+  savedRupees: number;
+};
 
 export function Dashboard({
   locale,
@@ -114,6 +122,7 @@ export function Dashboard({
   recentTxns,
   creditCard,
   festival,
+  rank,
   labels,
 }: {
   locale: string;
@@ -127,6 +136,7 @@ export function Dashboard({
   recentTxns: Txn[];
   creditCard: CreditCard | null;
   festival: FestivalProp | null;
+  rank: RankProp | null;
   labels: Labels;
 }) {
   const [chartView, setChartView] = useState<'balance' | 'saved' | 'munafa'>('balance');
@@ -474,6 +484,17 @@ export function Dashboard({
       {/* V5 M3 — Tier card. Right above Burst button so saving streak is visible at-a-glance. */}
       <div className="mx-4 mt-3">
         <TierCard streakDays={streakDays} />
+      </div>
+
+      {/* V5 M10 — State leaderboard rank card. */}
+      <div className="mx-4 mt-3">
+        <RankCard
+          rank={rank?.rank ?? null}
+          scopeKey={rank?.scopeKey ?? null}
+          totalSavers={rank?.totalSavers ?? 0}
+          percentile={rank?.percentile ?? 0}
+          savedRupees={rank?.savedRupees ?? 0}
+        />
       </div>
 
       {/* V5 M2 — Burst-mode button. Sits prominently above credit zone. */}

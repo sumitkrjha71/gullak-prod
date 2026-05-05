@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db/client';
 import { progressPct, remainingPaise } from '@/lib/goals/math';
 import { evaluateUser } from '@/lib/credit/eligibility';
 import { nextFestivalFor } from '@/lib/festivals/calendar';
+import { getUserRank } from '@/lib/leaderboard/aggregate';
 import { Dashboard } from './_dashboard';
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -58,6 +59,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   // V5 M6 — Festival nudge. State-keyed to user's saved state.
   const upcomingFestival = nextFestivalFor(user.state);
+
+  // V5 M10 — Leaderboard rank (lite). Reads latest snapshot for user's state.
+  const userRank = await getUserRank(user.id);
 
   // Credit eligibility — only show the credit card if eligible.
   const elig = await evaluateUser(user.id);
@@ -117,6 +121,17 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               daysAway: upcomingFestival.daysAway,
               states: upcomingFestival.festival.states,
               dates: upcomingFestival.festival.dates,
+            }
+          : null
+      }
+      rank={
+        userRank
+          ? {
+              rank: userRank.rank,
+              scopeKey: userRank.scopeKey,
+              totalSavers: userRank.totalSavers,
+              percentile: userRank.percentile,
+              savedRupees: userRank.savedRupees,
             }
           : null
       }
