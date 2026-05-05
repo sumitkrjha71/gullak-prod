@@ -45,7 +45,7 @@ export default async function CommitmentPage({
       goalName={goalName}
       goalTargetPaise={goalTargetPaise}
       goalDeadlineIso={goalDeadlineIso}
-      mode={(mode as 'fixed' | 'roundup' | 'sweep') ?? 'fixed'}
+      mode={(mode as 'fixed' | 'roundup' | 'sweep' | 'inflow_pct') ?? 'fixed'}
       suggestedRupees={suggestedRupees}
       labels={{
         title: t('commit.title'),

@@ -150,19 +150,33 @@
     "sub": "{goal} ke liye sabse aasaan rasta",
     "fixed": {
       "title": "Roz Thoda",
-      "desc": "Daily auto-save, set-and-forget — bina yaad rakhe paisa Gullak mein."
+      "desc": "Daily auto-save — set karo aur bhool jao. Salary-walon ke liye perfect."
+    },
+    "inflow": {
+      "title": "Kamai ka Hissa (5% / 10%)",
+      "desc": "Jab bhi paisa aaye — UPI, salary, bonus — uska ek hissa Gullak mein. Gig + daily-wage walon ka favourite.",
+      "tag": "Naya · Bharat-First"
     },
     "roundup": {
       "title": "Spare Change",
-      "desc": "Har transaction se bachha hua paisa Gullak mein. Coming soon!"
+      "desc": "Har transaction se bachha hua paisa Gullak mein. Jaldi aa raha hai!"
     },
     "sweep": {
       "title": "Salary Day Jaadu",
-      "desc": "Salary aate hi khud-ba-khud bachat. Coming soon!"
+      "desc": "Salary aate hi khud-ba-khud bachat. Jaldi aa raha hai!"
     },
-    "comingSoon": "Coming Soon",
+    "comingSoon": "Jaldi Aa Raha",
     "tags": { "popular": "Most Popular", "smart": "Smart", "max": "Max Save" },
     "hint": "Mode aap kabhi bhi badal sakte hain"
+  },
+  "inflow": {
+    "title": "Har kamai ka kitna hissa?",
+    "sub": "Jab bhi paisa aaye, uska {pct}% Gullak mein automatically",
+    "exampleTitle": "Example",
+    "exampleBody": "₹{inflow} kamaye → ₹{save} Gullak mein, ₹{remain} aapke pass",
+    "presets": "Aaram se {p1}% · Aksar log {p2}% · Tagde {p3}%",
+    "saveCta": "{pct}% — Gullak shuru karein",
+    "trust": "Burst-mode bhi available — bonus aaye to ek tap mein lock"
   },
   "commit": {
     "title": "Hisaab humne kar diya",
@@ -256,6 +270,19 @@
       "title": "Let's start your first Gullak",
       "sub": "Roz thoda — kal bada. Pick a goal to begin.",
       "cta": "Pick a goal"
+    },
+    "burst": {
+      "title": "Bonus / Extra paisa aaya?",
+      "sub": "Ek tap mein lock karo — kal ka sapna aur paas",
+      "cta": "Burst Save 🚀",
+      "modalTitle": "Kitna lock karna hai?",
+      "modalSub": "Yeh aapke abhi ke goal mein add hoga",
+      "presets": "Quick presets:",
+      "customLabel": "Apna amount",
+      "submit": "Abhi lock karein",
+      "submitting": "Lock ho raha hai…",
+      "success": "Mubarak ho! ₹{amount} Gullak mein lock ho gaye",
+      "successCta": "Wapas dashboard"
     }
   },
   "savestment": {

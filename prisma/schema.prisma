@@ -158,10 +158,11 @@ model AutopilotRule {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   goalId      String
   goal        Goal      @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  mode        String // fixed | roundup | sweep
+  mode        String // fixed | roundup | sweep | inflow_pct
   amountPaise BigInt? // for fixed/sweep
   frequency   String? // daily | weekly (fixed only)
   roundUpTo   Int? // 10 | 50 | 100 (roundup only)
+  inflowPct   Int? // basis points: 500 = 5%, 1000 = 10% (inflow_pct only)
   status      String    @default("active") // active | paused | stopped
   pauseUntil  DateTime? // for "Pause for 7 days" / "Pause till salary"
   createdAt   DateTime  @default(now())

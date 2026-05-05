@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ArrowRight, CalendarClock, Coins, Wallet } from 'lucide-react';
+import { ChevronLeft, ArrowRight, CalendarClock, Coins, Wallet, TrendingUp } from 'lucide-react';
 
-type Mode = 'fixed' | 'roundup' | 'sweep';
+type Mode = 'fixed' | 'roundup' | 'sweep' | 'inflow_pct';
 
 export function AutopilotPicker({
   locale,
@@ -25,6 +25,9 @@ export function AutopilotPicker({
     roundupDesc: string;
     sweepTitle: string;
     sweepDesc: string;
+    inflowTitle: string;
+    inflowDesc: string;
+    inflowTag: string;
     tagPopular: string;
     tagSmart: string;
     tagMax: string;
@@ -34,7 +37,6 @@ export function AutopilotPicker({
   };
 }) {
   const router = useRouter();
-  // Only Fixed is enabled at V4 launch.
   const [mode, setMode] = useState<Mode | null>('fixed');
 
   const cards: {
@@ -56,13 +58,22 @@ export function AutopilotPicker({
       accent: 'var(--saffron)',
     },
     {
+      id: 'inflow_pct',
+      icon: <TrendingUp size={24} aria-hidden />,
+      title: labels.inflowTitle,
+      desc: labels.inflowDesc,
+      tag: labels.inflowTag,
+      enabled: true,
+      accent: 'var(--trust)',
+    },
+    {
       id: 'roundup',
       icon: <Coins size={24} aria-hidden />,
       title: labels.roundupTitle,
       desc: labels.roundupDesc,
       tag: labels.tagSmart,
       enabled: false,
-      accent: 'var(--trust)',
+      accent: 'var(--gold)',
     },
     {
       id: 'sweep',
@@ -99,12 +110,12 @@ export function AutopilotPicker({
         <Image
           src="/assets/chiraiya-v2.png"
           alt=""
-          width={76}
-          height={62}
+          width={68}
+          height={56}
           priority
           style={{
-            width: 76,
-            height: 62,
+            width: 68,
+            height: 56,
             objectFit: 'contain',
             filter: 'drop-shadow(0 6px 14px rgba(196, 96, 42, 0.18))',
           }}
@@ -118,7 +129,7 @@ export function AutopilotPicker({
         </p>
       </div>
 
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-5 pt-5">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-2.5 overflow-y-auto px-5 pt-4 pb-2">
         {cards.map((c, i) => {
           const selected = mode === c.id;
           return (
@@ -126,10 +137,10 @@ export function AutopilotPicker({
               key={c.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08, duration: 0.3 }}
+              transition={{ delay: i * 0.06, duration: 0.3 }}
               onClick={() => c.enabled && setMode(c.id)}
               disabled={!c.enabled}
-              className="haptic-press relative flex items-center gap-3.5 p-4 text-left transition-all"
+              className="haptic-press relative flex items-center gap-3 p-3.5 text-left transition-all"
               style={{
                 background: selected
                   ? 'linear-gradient(145deg, #FFE9D2, #FFF5EC)'
@@ -141,7 +152,6 @@ export function AutopilotPicker({
                 cursor: c.enabled ? 'pointer' : 'default',
               }}
             >
-              {/* Tag (right side) */}
               <span
                 className="absolute right-2.5 top-2 rounded-md px-2 py-0.5 text-[10px] font-bold"
                 style={{
@@ -153,7 +163,7 @@ export function AutopilotPicker({
               </span>
 
               <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-card"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-card"
                 style={{
                   background: selected ? c.accent : 'var(--bg-soft)',
                   color: selected ? '#FFF8F0' : c.accent,
@@ -163,12 +173,12 @@ export function AutopilotPicker({
                 {c.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text)' }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
                   {c.title}
                 </div>
                 <p
-                  className="mt-0.5 text-[12.5px]"
-                  style={{ color: 'var(--muted)', lineHeight: 1.45 }}
+                  className="mt-0.5 text-[12px]"
+                  style={{ color: 'var(--muted)', lineHeight: 1.4 }}
                 >
                   {c.desc}
                 </p>
@@ -178,7 +188,7 @@ export function AutopilotPicker({
         })}
       </div>
 
-      <div className="safe-bottom mx-auto w-full max-w-md px-6 pb-2 pt-3">
+      <div className="safe-bottom mx-auto w-full max-w-md px-6 pb-2 pt-2">
         <button
           onClick={() => mode && router.push(`/${locale}/autopilot/new/amount?mode=${mode}&goal=${goalId}`)}
           disabled={!mode}

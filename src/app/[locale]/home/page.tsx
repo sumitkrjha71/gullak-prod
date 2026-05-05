@@ -155,6 +155,19 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           step4Title: t('walkthrough.step4Title'),
           step4Body: t('walkthrough.step4Body'),
         },
+        burst: {
+          title: t('dash.burst.title'),
+          sub: t('dash.burst.sub'),
+          cta: t('dash.burst.cta'),
+          modalTitle: t('dash.burst.modalTitle'),
+          modalSub: t('dash.burst.modalSub'),
+          presets: t('dash.burst.presets'),
+          customLabel: t('dash.burst.customLabel'),
+          submit: t('dash.burst.submit'),
+          submitting: t('dash.burst.submitting'),
+          success: t('dash.burst.success'),
+          successCta: t('dash.burst.successCta'),
+        },
       }}
     />
   );

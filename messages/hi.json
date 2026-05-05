@@ -151,6 +151,11 @@
       "title": "रोज़ थोड़ा",
       "desc": "रोज़ ऑटो-सेव — याद रखने की ज़रूरत नहीं।"
     },
+    "inflow": {
+      "title": "कमाई का हिस्सा (5% / 10%)",
+      "desc": "जब भी पैसा आए — UPI, सैलरी, बोनस — उसका एक हिस्सा गुल्लक में। Gig + daily-wage वालों का favourite.",
+      "tag": "नया · Bharat-First"
+    },
     "roundup": {
       "title": "स्पेयर चेंज",
       "desc": "हर खर्च से बचा पैसा गुल्लक में। जल्द आ रहा है!"
@@ -159,9 +164,18 @@
       "title": "सैलरी डे जादू",
       "desc": "सैलरी आते ही ऑटो-बचत। जल्द आ रहा है!"
     },
-    "comingSoon": "Coming Soon",
+    "comingSoon": "जल्द आ रहा",
     "tags": { "popular": "सबसे लोकप्रिय", "smart": "स्मार्ट", "max": "अधिकतम बचत" },
     "hint": "मोड कभी भी बदल सकते हैं"
+  },
+  "inflow": {
+    "title": "हर कमाई का कितना हिस्सा?",
+    "sub": "जब भी पैसा आए, उसका {pct}% गुल्लक में अपने आप",
+    "exampleTitle": "उदाहरण",
+    "exampleBody": "₹{inflow} कमाए → ₹{save} गुल्लक में, ₹{remain} आपके पास",
+    "presets": "आराम से {p1}% · अक्सर लोग {p2}% · तगड़े {p3}%",
+    "saveCta": "{pct}% — गुल्लक शुरू करें",
+    "trust": "Burst-mode भी available — बोनस आए तो एक tap में lock"
   },
   "commit": {
     "title": "हिसाब हमने कर दिया",
@@ -255,6 +269,19 @@
       "title": "अपना पहला गुल्लक शुरू करें",
       "sub": "रोज़ थोड़ा — कल बड़ा। एक लक्ष्य चुनें।",
       "cta": "लक्ष्य चुनें"
+    },
+    "burst": {
+      "title": "बोनस / Extra पैसा आया?",
+      "sub": "एक tap में lock करो — कल का सपना और पास",
+      "cta": "Burst Save 🚀",
+      "modalTitle": "कितना lock करना है?",
+      "modalSub": "ये आपके अभी के goal में add होगा",
+      "presets": "Quick presets:",
+      "customLabel": "अपना amount",
+      "submit": "अभी lock करें",
+      "submitting": "Lock हो रहा…",
+      "success": "मुबारक हो! ₹{amount} गुल्लक में lock हो गए",
+      "successCta": "वापस dashboard"
     }
   },
   "savestment": {

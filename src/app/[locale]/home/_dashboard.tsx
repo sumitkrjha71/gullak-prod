@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Phone, Clock, ArrowUpRight, Settings as SettingsIcon, Bell, KeyRound } from 'lucide-react';
 import { Walkthrough } from '@/components/flow/Walkthrough';
+import { BurstButton } from '@/components/autopilot/BurstButton';
 
 type Goal = {
   id: string;
@@ -70,6 +71,19 @@ type Labels = {
     step3Body: string;
     step4Title: string;
     step4Body: string;
+  };
+  burst: {
+    title: string;
+    sub: string;
+    cta: string;
+    modalTitle: string;
+    modalSub: string;
+    presets: string;
+    customLabel: string;
+    submit: string;
+    submitting: string;
+    success: string;
+    successCta: string;
   };
 };
 
@@ -392,6 +406,11 @@ export function Dashboard({
           {labels.txMore} →
         </Link>
       </section>
+
+      {/* V5 M2 — Burst-mode button. Sits prominently above credit zone. */}
+      <div className="mx-4 mt-3">
+        <BurstButton labels={labels.burst} />
+      </div>
 
       {/* Credit zone — only when eligible. Sits in Zone H beside the nudge. */}
       {creditCard && (
