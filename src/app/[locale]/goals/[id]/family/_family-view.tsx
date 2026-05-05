@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, Copy, Check, Share2, Users, Sparkles } from 'lucide-react';
+import { ChevronLeft, Copy, Check, Share2, Users, Sparkles, Gift } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { buildWhatsAppShareText, buildWhatsAppDeepLink } from '@/lib/family/invite';
 
@@ -349,6 +349,37 @@ export function FamilyView(props: Props) {
               </button>
             </div>
           </div>
+        )}
+
+        {/* V5 M8 — Shagun entry point. Visible only when there's at least one OTHER member. */}
+        {props.isShared && members && members.filter((m) => m.displayName !== 'You').length > 0 && (
+          <Link
+            href={`/${props.locale}/shagun/${props.goalId}`}
+            className="haptic-press mt-4 flex items-center gap-3 px-4 py-3.5"
+            style={{
+              background: 'linear-gradient(145deg, #FFE9D2, #FFF5EC)',
+              border: '1.5px solid var(--saffron)',
+              borderRadius: 'var(--radius-card-lg)',
+              boxShadow: 'var(--shadow-card)',
+            }}
+          >
+            <div
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ background: 'linear-gradient(135deg, #E8650A, #C4602A)', color: '#fff' }}
+              aria-hidden
+            >
+              <Gift size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[14px] font-extrabold" style={{ color: 'var(--text)' }}>
+                Shagun bhejein 🎁
+              </div>
+              <div className="mt-0.5 text-[12px]" style={{ color: 'var(--muted)' }}>
+                Apne Munafa se family member ko gift karein
+              </div>
+            </div>
+            <span style={{ color: 'var(--saffron)', fontSize: 14, fontWeight: 700 }}>→</span>
+          </Link>
         )}
 
         {/* Members list */}
