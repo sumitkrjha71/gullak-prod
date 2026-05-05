@@ -51,7 +51,7 @@ export function NameForm({
     >
       <header className="safe-top mx-auto flex w-full max-w-md items-center justify-between px-5 pt-3">
         <Link
-          href={`/${locale}/onboarding/otp`}
+          href={`/${locale}/onboarding/chiraiya`}
           aria-label="Back"
           className="haptic-press flex h-9 w-9 items-center justify-center rounded-full hover:bg-border/40"
           style={{ color: 'var(--muted)' }}

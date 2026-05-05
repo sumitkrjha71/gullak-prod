@@ -73,7 +73,8 @@ export function OtpForm({
       // Fire-and-forget DB warm-up so Neon is awake by the time the next page
       // loads. We don't await — the navigation should happen immediately.
       try { fetch('/api/db/warm', { method: 'GET' }); } catch { /* ignore */ }
-      router.push(`/${locale}/onboarding/name`);
+      // Trust-building Chiraiya intro before name entry.
+      router.push(`/${locale}/onboarding/chiraiya`);
     } catch {
       setError(labels.wrong);
       setCode('');
