@@ -6,6 +6,7 @@ import { progressPct, remainingPaise } from '@/lib/goals/math';
 import { evaluateUser } from '@/lib/credit/eligibility';
 import { nextFestivalFor } from '@/lib/festivals/calendar';
 import { getUserRank } from '@/lib/leaderboard/aggregate';
+import { ensureDemoUser } from '@/lib/seed/ensure';
 import { Dashboard } from './_dashboard';
 
 // Force dynamic so the session check happens fresh every visit (cookie-aware).
@@ -21,14 +22,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   // will NOT redirect us back to /home, so no loop).
   if (!session) redirect(`/${locale}`);
 
-  // Stale session (cookie valid but user record missing) → bounce to phone
-  // entry, NOT back to /[locale]. The splash redirects logged-in clients to
-  // /home AT THE END OF ITS ANIMATION (client-side), so /home → /[locale]
-  // would put us back on splash, which would push us back to /home, etc.
-  // /onboarding/phone is the safe terminus — no auto-redirect, lets the
-  // user re-authenticate and pick up a fresh demo-user-prod-001 session.
-  // We .catch DB errors so cold-starts don't crash the page either.
-  const user = await prisma.user
+  // Try to load the user.
+  let user = await prisma.user
     .findUnique({
       where: { id: session.userId },
       include: {
@@ -39,7 +34,31 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       },
     })
     .catch(() => null);
-  if (!user) redirect(`/${locale}/onboarding/phone`);
+
+  // Self-heal: if the demo user is missing (seed didn't run, DB wiped, etc.)
+  // create the bare minimum so the dashboard renders properly. This avoids
+  // both the redirect loop AND the confusing 'Pick a Goal' empty state that
+  // appears after a successful demo run. CRITICAL: never redirect away —
+  // every other branch we tried (back to /[locale], to /onboarding/phone)
+  // either looped or bounced freshly-onboarded users.
+  if (!user) {
+    await ensureDemoUser({
+      userId: session.userId,
+      phone: session.phone,
+      locale,
+    });
+    user = await prisma.user
+      .findUnique({
+        where: { id: session.userId },
+        include: {
+          goals: { where: { status: 'active' }, orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] },
+          rules: { where: { status: 'active' }, include: { goal: true } },
+          transactions: { where: { status: { in: ['success', 'failed'] } }, orderBy: { createdAt: 'desc' }, take: 30, include: { goal: true } },
+          streak: true,
+        },
+      })
+      .catch(() => null);
+  }
 
   // Defaults that make the dashboard render cleanly when user is null.
   const goals = user?.goals ?? [];
