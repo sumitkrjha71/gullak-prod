@@ -17,18 +17,17 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const t = await getTranslations({ locale });
 
   const session = await readSession();
-  // No session → splash. The splash is the only place we redirect FROM here,
-  // and the splash will NOT redirect back to /home for a no-session visit, so
-  // there is no loop.
+  // No session → splash (which is now where the app entry-point lives and
+  // will NOT redirect us back to /home, so no loop).
   if (!session) redirect(`/${locale}`);
 
-  // CRITICAL: never redirect back to /[locale] when user is null. The splash
-  // redirects to /home for any session — that creates an infinite redirect
-  // loop ("too many redirects") if the user record is missing or the DB is
-  // unreachable. Instead we render the dashboard with safe defaults.
-  // Reasons user can be null: (a) stale session pointing to an id that no
-  // longer exists after a seed change, (b) seed didn't run on this deploy,
-  // (c) DB cold-start exhausted retries.
+  // Stale session (cookie valid but user record missing) → bounce to phone
+  // entry, NOT back to /[locale]. The splash redirects logged-in clients to
+  // /home AT THE END OF ITS ANIMATION (client-side), so /home → /[locale]
+  // would put us back on splash, which would push us back to /home, etc.
+  // /onboarding/phone is the safe terminus — no auto-redirect, lets the
+  // user re-authenticate and pick up a fresh demo-user-prod-001 session.
+  // We .catch DB errors so cold-starts don't crash the page either.
   const user = await prisma.user
     .findUnique({
       where: { id: session.userId },
@@ -40,6 +39,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       },
     })
     .catch(() => null);
+  if (!user) redirect(`/${locale}/onboarding/phone`);
 
   // Defaults that make the dashboard render cleanly when user is null.
   const goals = user?.goals ?? [];

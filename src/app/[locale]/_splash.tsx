@@ -21,8 +21,10 @@ type Coin = { id: number; left: number; delay: number };
 export function SplashScreen({
   locale,
   labels,
+  isLoggedIn,
 }: {
   locale: string;
+  isLoggedIn: boolean;
   labels: {
     appName: string;
     tagline: string;
@@ -55,9 +57,16 @@ export function SplashScreen({
         if (id > 7) clearInterval(iv);
       }, 280);
     }, 7000);
-    const tAuto = setTimeout(() => {
-      router.push(`/${locale}/language-select`);
-    }, 9200);
+    // Logged-in users see a shortened splash (~3s — long enough to catch the
+    // brand reveal) then land on the dashboard. Fresh users get the full ~9s
+    // cinematic and then enter language-select.
+    const tAuto = setTimeout(
+      () => {
+        if (isLoggedIn) router.push(`/${locale}/home`);
+        else router.push(`/${locale}/language-select`);
+      },
+      isLoggedIn ? 3000 : 9200,
+    );
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -65,7 +74,7 @@ export function SplashScreen({
       clearTimeout(t4);
       clearTimeout(tAuto);
     };
-  }, [locale, router]);
+  }, [locale, router, isLoggedIn]);
 
   // Typewriter cadence — variable 60–110ms per char. Starts when act >= 3.
   useEffect(() => {
@@ -105,9 +114,9 @@ export function SplashScreen({
         fontFamily: "'Nunito', sans-serif",
       }}
     >
-      {/* Skip — small, top-right */}
+      {/* Skip — small, top-right. Routes by auth state same as auto-advance. */}
       <Link
-        href={`/${locale}/language-select`}
+        href={isLoggedIn ? `/${locale}/home` : `/${locale}/language-select`}
         className="absolute right-4 top-3 z-30 text-[12px] font-semibold text-[#D4A017]/70 hover:text-[#D4A017] transition-colors"
       >
         {labels.skip} →

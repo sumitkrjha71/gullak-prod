@@ -1,29 +1,26 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { redirect } from 'next/navigation';
 import { SplashScreen } from './_splash';
 import { readSession } from '@/lib/auth/session';
 
-// Force dynamic so the session cookie check happens per-request and never
-// gets cached. Without this, Next.js may statically render the splash and
-// skip the redirect for already-logged-in users.
+// Force dynamic so the session cookie is read per-request (not cached).
 export const dynamic = 'force-dynamic';
 
 export default async function SplashPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  // Logged-in users skip splash + onboarding entirely → straight to dashboard.
-  // Session JWT lives 30 days in an httpOnly cookie; only /api/auth/signout clears it.
+  // The splash ALWAYS renders. We pass session state down so the splash
+  // can route to /home (logged-in) or /language-select (fresh user) at the
+  // end of its animation, instead of doing a server-side redirect that
+  // would skip the splash entirely.
   const session = await readSession();
-  if (session) {
-    redirect(`/${locale}/home`);
-  }
 
   const t = await getTranslations({ locale });
 
   return (
     <SplashScreen
       locale={locale}
+      isLoggedIn={!!session}
       labels={{
         appName: t('common.appName'),
         tagline: t('splash.tagline'),
