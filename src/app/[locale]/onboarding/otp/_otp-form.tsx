@@ -70,6 +70,9 @@ export function OtpForm({
         submittedRef.current = false;
         return;
       }
+      // Fire-and-forget DB warm-up so Neon is awake by the time the next page
+      // loads. We don't await — the navigation should happen immediately.
+      try { fetch('/api/db/warm', { method: 'GET' }); } catch { /* ignore */ }
       router.push(`/${locale}/onboarding/name`);
     } catch {
       setError(labels.wrong);
