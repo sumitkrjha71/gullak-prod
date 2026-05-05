@@ -11,6 +11,7 @@ import { TierCard } from '@/components/streak/TierCard';
 import { FestivalNudge } from '@/components/festival/FestivalNudge';
 import { RankCard } from '@/components/leaderboard/RankCard';
 import { GroupGullakCard } from '@/components/group/GroupGullakCard';
+import { LogoutButton } from '@/components/auth/LogoutButton';
 
 type Goal = {
   id: string;
@@ -223,6 +224,14 @@ export function Dashboard({
         >
           Aaj aapka Gullak kaisa hai?
         </h2>
+      </div>
+
+      {/* V5 M1 — Group Gullak hero CTA. Sits at the very top of the dashboard
+           (right under the greeting) so it's the first thing the investor sees.
+           Pulsing glow + gradient shimmer + bouncing arrow + NAYA badge — designed
+           to be impossible to scroll past without tapping. */}
+      <div className="mx-4 mt-3.5">
+        <GroupGullakCard locale={locale} />
       </div>
 
       {/* Zone B — Chart */}
@@ -487,13 +496,6 @@ export function Dashboard({
         <TierCard streakDays={streakDays} />
       </div>
 
-      {/* V5 M1 — Group Gullak entry. Bouncy card surfaces the social-savings feature
-           directly on dashboard so the user can't miss it. Click → /group-gullak/new
-           → pick Indian theme (Kitty/Committee/etc.) → invite friends → save together. */}
-      <div className="mx-4 mt-3">
-        <GroupGullakCard locale={locale} />
-      </div>
-
       {/* V5 M10 — State leaderboard rank card. */}
       <div className="mx-4 mt-3">
         <RankCard
@@ -624,6 +626,7 @@ function TrustStrip({
         >
           <SettingsIcon size={16} />
         </Link>
+        <LogoutButton locale={locale} />
         <button
           aria-label="Call support"
           className="haptic-press flex items-center gap-1 rounded-full bg-trust/10 px-2 py-1 text-[10px] font-bold text-trust"
