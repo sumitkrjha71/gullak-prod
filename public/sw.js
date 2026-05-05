@@ -62,3 +62,42 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// V5 M11 — Web Push event handler.
+self.addEventListener('push', (event) => {
+  let data = { title: 'Gullak', body: 'Aapke Gullak mein kuch nayi cheez!', url: '/', icon: '/icons/icon-192.png' };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch (e) {
+    // Use defaults if payload is malformed
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: '/icons/icon-192.png',
+      tag: 'gullak-notification',
+      data: { url: data.url },
+      vibrate: [120, 60, 120],
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          if ('navigate' in client) client.navigate(url);
+          return;
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(url);
+      }
+    })
+  );
+});
