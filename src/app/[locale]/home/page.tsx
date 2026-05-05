@@ -8,34 +8,57 @@ import { nextFestivalFor } from '@/lib/festivals/calendar';
 import { getUserRank } from '@/lib/leaderboard/aggregate';
 import { Dashboard } from './_dashboard';
 
+// Force dynamic so the session check happens fresh every visit (cookie-aware).
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale });
 
   const session = await readSession();
+  // No session → splash. The splash is the only place we redirect FROM here,
+  // and the splash will NOT redirect back to /home for a no-session visit, so
+  // there is no loop.
   if (!session) redirect(`/${locale}`);
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    include: {
-      goals: { where: { status: 'active' }, orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] },
-      rules: { where: { status: 'active' }, include: { goal: true } },
-      transactions: { where: { status: { in: ['success', 'failed'] } }, orderBy: { createdAt: 'desc' }, take: 30, include: { goal: true } },
-      streak: true,
-    },
-  });
-  if (!user) redirect(`/${locale}`);
+  // CRITICAL: never redirect back to /[locale] when user is null. The splash
+  // redirects to /home for any session — that creates an infinite redirect
+  // loop ("too many redirects") if the user record is missing or the DB is
+  // unreachable. Instead we render the dashboard with safe defaults.
+  // Reasons user can be null: (a) stale session pointing to an id that no
+  // longer exists after a seed change, (b) seed didn't run on this deploy,
+  // (c) DB cold-start exhausted retries.
+  const user = await prisma.user
+    .findUnique({
+      where: { id: session.userId },
+      include: {
+        goals: { where: { status: 'active' }, orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] },
+        rules: { where: { status: 'active' }, include: { goal: true } },
+        transactions: { where: { status: { in: ['success', 'failed'] } }, orderBy: { createdAt: 'desc' }, take: 30, include: { goal: true } },
+        streak: true,
+      },
+    })
+    .catch(() => null);
 
-  const primary = user.goals[0] ?? null;
-  const totalSaved = user.goals.reduce((s, g) => s + Number(g.savedPaise), 0);
-  const totalGrowth = user.goals.reduce((s, g) => s + Number(g.growthPaise), 0);
-  const dailyAmt = user.rules[0]?.amountPaise ? Math.round(Number(user.rules[0].amountPaise) / 100) : 20;
+  // Defaults that make the dashboard render cleanly when user is null.
+  const goals = user?.goals ?? [];
+  const rules = user?.rules ?? [];
+  const transactions = user?.transactions ?? [];
+  const streakDays = user?.streak?.currentDays ?? 0;
+  const userName = user?.name ?? 'Dost';
+  const userState = user?.state ?? null;
+  const userId = user?.id ?? session.userId;
+
+  const primary = goals[0] ?? null;
+  const totalSaved = goals.reduce((s, g) => s + Number(g.savedPaise), 0);
+  const totalGrowth = goals.reduce((s, g) => s + Number(g.growthPaise), 0);
+  const dailyAmt = rules[0]?.amountPaise ? Math.round(Number(rules[0].amountPaise) / 100) : 20;
 
   // Build a 12-point chart series from cumulative daily totals.
   const days = 12;
   const buckets: number[] = Array.from({ length: days }, () => 0);
-  for (const t of user.transactions) {
+  for (const t of transactions) {
     if (t.status !== 'success') continue;
     const ageDays = Math.floor((Date.now() - t.createdAt.getTime()) / 86400000);
     if (ageDays < 0 || ageDays >= days) continue;
@@ -44,7 +67,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const cumul: number[] = [];
   let acc = 0;
   for (const d of buckets) { acc += d; cumul.push(acc); }
-  // Normalise for SVG path (0..100 range).
   const max = Math.max(...cumul, 1);
   const chartPoints = cumul.map((v) => Math.round((v / max) * 95));
 
@@ -55,17 +77,16 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     : 0;
 
   const monthlyGrowth = totalGrowth ? Math.round(totalGrowth / 100) : 0;
-  const streak = user.streak?.currentDays ?? 0;
 
-  // V5 M6 — Festival nudge. State-keyed to user's saved state.
-  const upcomingFestival = nextFestivalFor(user.state);
+  // Festival nudge (state-keyed). Pure function — no DB.
+  const upcomingFestival = nextFestivalFor(userState);
 
-  // V5 M10 — Leaderboard rank (lite). Reads latest snapshot for user's state.
-  const userRank = await getUserRank(user.id);
+  // Leaderboard rank — best-effort, fail-soft.
+  const userRank = await getUserRank(userId).catch(() => null);
 
-  // Credit eligibility — only show the credit card if eligible.
-  const elig = await evaluateUser(user.id);
-  const topProduct = elig.eligible
+  // Credit eligibility — best-effort, fail-soft.
+  const elig = await evaluateUser(userId).catch(() => null);
+  const topProduct = elig?.eligible
     ? elig.products.slice().sort((a, b) => b.maxPaise - a.maxPaise)[0]
     : null;
   const creditCard = topProduct
@@ -79,10 +100,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <Dashboard
       locale={locale}
-      userName={user.name ?? 'User'}
+      userName={userName}
       totalSavedRupees={Math.round(totalSaved / 100)}
       monthlyGrowthRupees={monthlyGrowth}
-      streakDays={streak}
+      streakDays={streakDays}
       dailyAmt={dailyAmt}
       chartPoints={chartPoints}
       primaryGoal={
@@ -135,7 +156,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             }
           : null
       }
-      recentTxns={user.transactions.slice(0, 3).map((tx) => ({
+      recentTxns={transactions.slice(0, 3).map((tx) => ({
         id: tx.id,
         source: tx.source,
         status: tx.status,
@@ -151,7 +172,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         saved: t('dash.saved'),
         munafa: t('dash.munafa'),
         totalJama: t('dash.totalJama'),
-        streak: streak > 0 ? t('dash.streak', { n: streak }) : '',
+        streak: streakDays > 0 ? t('dash.streak', { n: streakDays }) : '',
         munafaMonth: t('dash.munafaMonth'),
         munafaTag: t('dash.munafaTag'),
         goalEta: monthsAtPace ? t('dash.goalEta', { n: monthsAtPace }) : '',

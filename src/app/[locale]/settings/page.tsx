@@ -17,14 +17,18 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
   const session = await readSession();
   if (!session) redirect(`/${locale}`);
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    include: {
-      rules: { include: { goal: true } },
-      preferences: true,
-    },
-  });
-  if (!user) redirect(`/${locale}`);
+  // Stale session or DB unreachable → bounce to phone entry (NOT to splash,
+  // which would re-redirect here and loop).
+  const user = await prisma.user
+    .findUnique({
+      where: { id: session.userId },
+      include: {
+        rules: { include: { goal: true } },
+        preferences: true,
+      },
+    })
+    .catch(() => null);
+  if (!user) redirect(`/${locale}/onboarding/phone`);
 
   const rules = user.rules.map((r) => ({
     id: r.id,

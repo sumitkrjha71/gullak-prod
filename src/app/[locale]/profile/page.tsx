@@ -17,15 +17,20 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
   const session = await readSession();
   if (!session) redirect(`/${locale}`);
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    include: {
-      streak: true,
-      goals: { where: { status: 'active' } },
-      transactions: { where: { status: 'success' } },
-    },
-  });
-  if (!user) redirect(`/${locale}`);
+  // Stale session or DB unreachable → bounce to phone entry (NOT to splash,
+  // which would re-redirect here and loop). The session cookie stays; OTP
+  // re-login will issue a fresh one.
+  const user = await prisma.user
+    .findUnique({
+      where: { id: session.userId },
+      include: {
+        streak: true,
+        goals: { where: { status: 'active' } },
+        transactions: { where: { status: 'success' } },
+      },
+    })
+    .catch(() => null);
+  if (!user) redirect(`/${locale}/onboarding/phone`);
 
   const totalGrowth = user.goals.reduce((s, g) => s + Number(g.growthPaise), 0);
   const phoneMasked = user.phone.replace(/(\d{2})\d{6}(\d{2})/, '$1******$2');
