@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isValidIndianPhone, verifyOtp } from '@/lib/auth/otp';
 import { createSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/client';
+import { withDbRetry } from '@/lib/db/retry';
 import { dispatch } from '@/lib/events/bus';
 import { transitionUser } from '@/lib/state-machine/user';
 import { findReferrerByCode, recordReferralAndReward } from '@/lib/referrals/codes';
+
+// Allow up to 30s so Neon cold-start retries (1.5+3+4.5s) have headroom.
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,24 +32,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { phone } });
+    let existingUser;
+    try {
+      existingUser = await withDbRetry(
+        () => prisma.user.findUnique({ where: { phone } }),
+        'otp/verify:findUser',
+      );
+    } catch (dbErr) {
+      console.error('[otp/verify] DB findUnique failed after retries:', {
+        message: (dbErr as Error)?.message,
+        name: (dbErr as Error)?.name,
+        code: (dbErr as { code?: string })?.code,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'db_waking',
+          hint: 'Database is waking up — please try again in 5 seconds',
+        },
+        { status: 503 },
+      );
+    }
     const wasNewUser = !existingUser;
 
     let user;
     try {
-      user = await prisma.user.upsert({
-        where: { phone },
-        update: { locale: typeof locale === 'string' ? locale : undefined },
-        create: {
-          phone,
-          locale: typeof locale === 'string' ? locale : 'en',
-          lifecycleState: 'NEW',
-          preferences: { create: {} },
-          referredBy: referrer?.id ?? null,
-        },
-      });
+      user = await withDbRetry(
+        () => prisma.user.upsert({
+          where: { phone },
+          update: { locale: typeof locale === 'string' ? locale : undefined },
+          create: {
+            phone,
+            locale: typeof locale === 'string' ? locale : 'en',
+            lifecycleState: 'NEW',
+            preferences: { create: {} },
+            referredBy: referrer?.id ?? null,
+          },
+        }),
+        'otp/verify:upsertUser',
+      );
     } catch (dbErr) {
-      console.error('[otp/verify] DB upsert failed:', {
+      console.error('[otp/verify] DB upsert failed after retries:', {
         message: (dbErr as Error)?.message,
         name: (dbErr as Error)?.name,
         code: (dbErr as { code?: string })?.code,
