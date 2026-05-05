@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Phone, Clock, ArrowUpRight, Settings as SettingsIcon, Bell, KeyRound } from 'lucide-react';
 import { Walkthrough } from '@/components/flow/Walkthrough';
 import { BurstButton } from '@/components/autopilot/BurstButton';
+import { TierCard } from '@/components/streak/TierCard';
 
 type Goal = {
   id: string;
@@ -406,6 +407,11 @@ export function Dashboard({
           {labels.txMore} →
         </Link>
       </section>
+
+      {/* V5 M3 — Tier card. Right above Burst button so saving streak is visible at-a-glance. */}
+      <div className="mx-4 mt-3">
+        <TierCard streakDays={streakDays} />
+      </div>
 
       {/* V5 M2 — Burst-mode button. Sits prominently above credit zone. */}
       <div className="mx-4 mt-3">

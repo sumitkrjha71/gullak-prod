@@ -484,6 +484,41 @@
     "successBank": "Bank mein T+1 din mein",
     "home": "Go to home"
   },
+  "_tier_options_for_swap": [
+    "OPTION A (current default — heroic): Bachat Shuruati / Veer / Yodha / Munafa Sherni / Aatmanirbhar",
+    "OPTION B (Hindi-English mix): Naya Saver / Bachat Mitra / Bachat Veer / Munafa Master / Wealth Warrior",
+    "OPTION C (nature/growth): Beej / Ankur / Paudha / Vriksha / Vatavriksha",
+    "OPTION D (cosmic): Tara / Chand / Surya / Akashganga / Brahmand",
+    "OPTION E (playful): Chai Saver / Pakka Saver / Champ Saver / Pro Saver / Maharaja Saver",
+    "OPTION F (milestone-anchored): Roz Wala / 7-Day Star / 1-Mahina Mast / 3-Mahina Champ / Saal-Bhar Sherni",
+    "Edit tiers.tN.name + tiers.tN.celebrate below to swap. Other locales follow same structure."
+  ],
+  "tiers": {
+    "beginner": {
+      "name": "Naya Bachatkar",
+      "celebrate": "Chaliye, shuru karte hain — pehla rupee Gullak mein!"
+    },
+    "t1": {
+      "name": "Bachat Shuruati",
+      "celebrate": "3 din ka pakka — aapki bachat ki aadat ban gayi! Aage badhte raho."
+    },
+    "t2": {
+      "name": "Bachat Veer",
+      "celebrate": "Lagatar ek hafta — Bachat Veer ban gaye! Yaar, ye baat hai."
+    },
+    "t3": {
+      "name": "Bachat Yodha",
+      "celebrate": "Ek mahina, koi naagha nahi — aap Bachat Yodha hain. Bharat ke serious savers mein aapka naam."
+    },
+    "t4": {
+      "name": "Munafa Sherni",
+      "celebrate": "Teen mahine ka pakka — aap Munafa Sherni hain. Aapka paisa ab kaam kar raha hai."
+    },
+    "t5": {
+      "name": "Aatmanirbhar",
+      "celebrate": "Ek poora saal — aap Aatmanirbhar hain. Bharat ke top 1% savers mein. Naaz hai aap par."
+    }
+  },
   "family": {
     "headline": "Saath bachat — saath manzil",
     "sub": "Mil-jul ke jodne se sapna jaldi paas aata hai",
