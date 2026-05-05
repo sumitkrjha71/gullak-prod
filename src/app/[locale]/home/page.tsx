@@ -4,6 +4,7 @@ import { readSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/client';
 import { progressPct, remainingPaise } from '@/lib/goals/math';
 import { evaluateUser } from '@/lib/credit/eligibility';
+import { nextFestivalFor } from '@/lib/festivals/calendar';
 import { Dashboard } from './_dashboard';
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -55,6 +56,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const monthlyGrowth = totalGrowth ? Math.round(totalGrowth / 100) : 0;
   const streak = user.streak?.currentDays ?? 0;
 
+  // V5 M6 — Festival nudge. State-keyed to user's saved state.
+  const upcomingFestival = nextFestivalFor(user.state);
+
   // Credit eligibility — only show the credit card if eligible.
   const elig = await evaluateUser(user.id);
   const topProduct = elig.eligible
@@ -98,6 +102,21 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               cta: t('credit.dashboardCta', { max: new Intl.NumberFormat('en-IN').format(creditCard.maxRupees) }),
               link: t('credit.dashboardLink'),
               ratePct: creditCard.ratePct,
+            }
+          : null
+      }
+      festival={
+        upcomingFestival
+          ? {
+              id: upcomingFestival.festival.id,
+              name: upcomingFestival.festival.name,
+              emoji: upcomingFestival.festival.emoji,
+              headline: upcomingFestival.festival.headline,
+              sub: upcomingFestival.festival.sub,
+              defaultTargetRupees: upcomingFestival.festival.defaultTargetRupees,
+              daysAway: upcomingFestival.daysAway,
+              states: upcomingFestival.festival.states,
+              dates: upcomingFestival.festival.dates,
             }
           : null
       }

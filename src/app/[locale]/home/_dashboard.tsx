@@ -8,6 +8,7 @@ import { Phone, Clock, ArrowUpRight, Settings as SettingsIcon, Bell, KeyRound } 
 import { Walkthrough } from '@/components/flow/Walkthrough';
 import { BurstButton } from '@/components/autopilot/BurstButton';
 import { TierCard } from '@/components/streak/TierCard';
+import { FestivalNudge } from '@/components/festival/FestivalNudge';
 
 type Goal = {
   id: string;
@@ -89,6 +90,17 @@ type Labels = {
 };
 
 type CreditCard = { type: string; cta: string; link: string; ratePct: string };
+type FestivalProp = {
+  id: string;
+  name: string;
+  emoji: string;
+  headline: string;
+  sub: string;
+  defaultTargetRupees: number;
+  daysAway: number;
+  states: string[];
+  dates: string[];
+};
 
 export function Dashboard({
   locale,
@@ -101,6 +113,7 @@ export function Dashboard({
   primaryGoal,
   recentTxns,
   creditCard,
+  festival,
   labels,
 }: {
   locale: string;
@@ -113,6 +126,7 @@ export function Dashboard({
   primaryGoal: Goal | null;
   recentTxns: Txn[];
   creditCard: CreditCard | null;
+  festival: FestivalProp | null;
   labels: Labels;
 }) {
   const [chartView, setChartView] = useState<'balance' | 'saved' | 'munafa'>('balance');
@@ -436,6 +450,26 @@ export function Dashboard({
           {labels.txMore} →
         </Link>
       </section>
+
+      {/* V5 M6 — Festival nudge. Only when an upcoming festival exists for user's state. */}
+      {festival && (
+        <div className="mx-4 mt-3">
+          <FestivalNudge
+            festival={{
+              id: festival.id,
+              name: festival.name,
+              emoji: festival.emoji,
+              headline: festival.headline,
+              sub: festival.sub,
+              defaultTargetRupees: festival.defaultTargetRupees,
+              dates: festival.dates,
+              states: festival.states,
+            }}
+            daysAway={festival.daysAway}
+            locale={locale}
+          />
+        </div>
+      )}
 
       {/* V5 M3 — Tier card. Right above Burst button so saving streak is visible at-a-glance. */}
       <div className="mx-4 mt-3">
