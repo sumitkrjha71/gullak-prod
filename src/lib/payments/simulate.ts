@@ -7,7 +7,7 @@ import { writeAudit } from '@/lib/audit/log';
 import { buildSimulatedRefId } from '@/lib/idempotency/key';
 import { istDateKey } from '@/lib/format/date';
 
-export type PaymentSource = 'fixed' | 'roundup' | 'sweep' | 'manual';
+export type PaymentSource = 'fixed' | 'roundup' | 'sweep' | 'manual' | 'inflow_pct' | 'burst' | 'shagun' | 'referral' | 'withdrawal';
 export type FailureReason = 'insufficient_balance' | 'mandate_revoked' | 'network_timeout';
 
 export type SimResult = {

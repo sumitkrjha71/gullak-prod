@@ -297,7 +297,7 @@ export function CommitmentForm({
 
       <div className="safe-bottom mx-auto w-full max-w-md px-6 pb-2 pt-3">
         <button
-          onClick={submit}
+          onClick={() => submit()}
           disabled={loading || dailyRupees < 1}
           className="haptic-press cta-primary flex h-14 w-full items-center justify-center gap-2 rounded-btn text-[15.5px] font-bold disabled:opacity-50"
         >

@@ -12,7 +12,11 @@ export type SavingsEventType =
   | 'GOAL_PROGRESS_UPDATED'
   | 'STREAK_INCREMENTED'
   | 'WEEKLY_SUMMARY_GENERATED'
-  | 'MILESTONE_REACHED';
+  | 'MILESTONE_REACHED'
+  // V5 additions
+  | 'GOAL_SHARED'
+  | 'GOAL_JOINED'
+  | 'SHAGUN_SENT';
 
 export type SavingsEventPayloadMap = {
   USER_CREATED: { phone: string; locale: string };
@@ -26,6 +30,10 @@ export type SavingsEventPayloadMap = {
   STREAK_INCREMENTED: { currentDays: number };
   WEEKLY_SUMMARY_GENERATED: { savedPaise: number; growthPaise: number };
   MILESTONE_REACHED: { goalId: string; milestonePct: number };
+  // V5 additions
+  GOAL_SHARED: { goalId: string; code: string };
+  GOAL_JOINED: { goalId: string; code: string };
+  SHAGUN_SENT: { toUserId: string; goalId: string; amountPaise: number; occasion: string; message: string | null; refId: string };
 };
 
 export type SavingsEvent<T extends SavingsEventType = SavingsEventType> = {
