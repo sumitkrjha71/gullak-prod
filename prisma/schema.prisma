@@ -256,19 +256,40 @@ model Transaction {
   goal           Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
   ruleId         String?
   rule           AutopilotRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
-  source         String // fixed | roundup | sweep | manual
+  source         String    // fixed | roundup | sweep | manual | burst | shagun | withdrawal
   amountPaise    BigInt
-  status         String // pending | success | failed | reversed
-  failureReason  String? // insufficient_balance | mandate_revoked | network_timeout
-  simulatedRefId String // SIM-XXXXXXXX
+  status         String    // pending | success | failed | reversed
+  failureReason  String?   // insufficient_balance | mandate_revoked | network_timeout
+  // PSP reference fields — null when using mock/simulator, populated by real PSP
+  pspRefId       String?   // Razorpay payment_id or equivalent
+  pspOrderId     String?   // Razorpay order_id
+  pspRawJson     String?   // raw PSP webhook payload for audit/replay
+  simulatedRefId String    @default("") // legacy field kept for backwards compat; use pspRefId
   idempotencyKey String    @unique
   reversedAt     DateTime?
-  reversalOfId   String? // points to original txn
+  reversalOfId   String?   // points to original txn id
   createdAt      DateTime  @default(now())
 
   @@index([userId, createdAt])
   @@index([goalId, createdAt])
   @@index([status])
+  @@index([pspRefId])
+}
+
+// Raw webhook event log — idempotent ingestion from all PSPs.
+// Process once, store forever. Never delete — required for reconciliation.
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String    // razorpay | cashfree | safegold | setu
+  eventId     String    @unique // provider's own event/delivery ID
+  eventType   String    // payment.captured | mandate.confirmed | etc.
+  rawJson     String    // full payload as-received
+  processedAt DateTime?
+  errorMsg    String?   // set if processing failed
+  createdAt   DateTime  @default(now())
+
+  @@index([provider, eventType])
+  @@index([createdAt])
 }
 
 model SavingsEvent {

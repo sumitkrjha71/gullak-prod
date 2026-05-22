@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { readSession } from '@/lib/auth/session';
 import { verifyPAN } from '@/lib/kyc/pan';
 import { hasMandatoryConsents } from '@/lib/kyc/consent';
+import { ratelimit } from '@/lib/ratelimit';
 import { logger } from '@/lib/logger';
 
 const schema = z.object({
@@ -18,6 +19,11 @@ export async function POST(req: NextRequest) {
     const hasConsents = await hasMandatoryConsents(session.userId);
     if (!hasConsents) {
       return NextResponse.json({ ok: false, error: 'consent_required' }, { status: 403 });
+    }
+
+    const rl = await ratelimit.kyc(session.userId);
+    if (!rl.allowed) {
+      return NextResponse.json({ ok: false, error: 'too_many_requests' }, { status: 429 });
     }
 
     const body = schema.safeParse(await req.json());

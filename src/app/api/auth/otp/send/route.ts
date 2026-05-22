@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOtp, isValidIndianPhone } from '@/lib/auth/otp';
+import { ratelimit } from '@/lib/ratelimit';
 import { logger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
@@ -9,6 +10,12 @@ export async function POST(req: NextRequest) {
 
     if (typeof phone !== 'string' || !isValidIndianPhone(phone)) {
       return NextResponse.json({ ok: false, error: 'invalid_phone' }, { status: 400 });
+    }
+
+    const rl = await ratelimit.otp(phone);
+    if (!rl.allowed) {
+      logger.warn({ route: 'otp/send' }, 'rate_limit_exceeded');
+      return NextResponse.json({ ok: false, error: 'too_many_requests' }, { status: 429 });
     }
 
     await sendOtp(phone);
