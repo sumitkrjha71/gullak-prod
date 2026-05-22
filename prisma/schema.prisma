@@ -48,8 +48,14 @@ model User {
   notifications     Notification[]
   preferences       UserPreference?
   roundupBucket     RoundupBucket?
-  aaConsents        AAConsent[]
-  loanOffers        LoanOffer[]
+  aaConsents           AAConsent[]
+  bankAccounts         BankAccount[]
+  bankTransactions     BankTransaction[]
+  financialProfile     UserFinancialProfile?
+  cashflowSnapshots    CashflowSnapshot[]
+  financialInsights    FinancialInsight[]
+  autopilotRecs        AutopilotRecommendation[]
+  loanOffers           LoanOffer[]
   loanApplications  LoanApplication[]
   referralsMade     Referral[]        @relation("Referrer")
   pushSubscriptions PushSubscription[]
@@ -111,21 +117,215 @@ model LeaderboardSnapshot {
   @@index([userId])
 }
 
-// Account Aggregator consent — tracks what the user authorised the AA to fetch.
-// V3 is mocked; the surface matches what real Sahamati AA flow would return.
+// Account Aggregator consent — RBI-compliant consent artefact.
+// Phase 6: extended with provider metadata, artefact storage, and data-lifecycle fields.
 model AAConsent {
-  id             String    @id @default(cuid())
-  userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fipId          String    // mock FIP identifier (e.g. "MOCK_HDFC")
-  consentHandle  String    @unique // mock UUID-shaped handle
-  status         String    @default("ACTIVE") // ACTIVE | REVOKED | EXPIRED
-  fetchedAt      DateTime?
-  expiresAt      DateTime
-  payload        String?   // JSON — mock account snapshot (transactions, salary, EMI patterns)
-  createdAt      DateTime  @default(now())
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fipId            String    // FIP identifier (e.g. "HDFC", "ICICI", "MOCK_HDFC")
+  providerType     String    @default("mock") // mock | setu | finvu
+  consentHandle    String    @unique
+  // Status: PENDING → ACTIVE → EXPIRED / REVOKED
+  status           String    @default("ACTIVE")
+  // RBI-mandated consent artefact (signed blob from AA provider)
+  consentArtefact  String?   // JSON
+  // Encrypted access token for data fetch (AES-256-GCM, key in env)
+  encryptedToken   String?
+  purpose          String    @default("Wealth Management")  // per RBI FI-purpose codes
+  fiTypes          String    @default("DEPOSIT")           // DEPOSIT | MUTUAL_FUNDS | INSURANCE
+  // How far back we have fetched; incremental fetch uses this as cursor
+  fetchedUntil     DateTime?
+  fetchedAt        DateTime?
+  expiresAt        DateTime
+  // DPDP Act 2023: data must be deleted 30 days after revocation / 1 year from consent
+  dataExpiresAt    DateTime?
+  // V3 compat: legacy flat snapshot still stored for old UI
+  payload          String?
+  createdAt        DateTime  @default(now())
 
+  bankAccounts     BankAccount[]
   @@index([userId, status])
+}
+
+// ─── Khata: Bank Accounts ─────────────────────────────────────────────────────
+// One row per bank account per consent. Account number stored masked (last 4 only).
+model BankAccount {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentId     String
+  consent       AAConsent @relation(fields: [consentId], references: [id], onDelete: Cascade)
+  fipId         String
+  accountMasked String    // last 4 digits only — NEVER full account number
+  accountType   String    @default("SAVINGS") // SAVINGS | CURRENT | OD
+  ifscPrefix    String?   // first 4 chars for branch-region signal
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  transactions  BankTransaction[]
+  @@unique([userId, accountMasked, fipId])
+  @@index([userId, isActive])
+}
+
+// ─── Khata: Bank Transactions ─────────────────────────────────────────────────
+// Normalized, classified, deduplicated. Full narration is NEVER stored — only hash
+// and a 20-char masked prefix. Classification output is the source of intelligence.
+model BankTransaction {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId       String
+  account         BankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  // Dedup: SHA-256(accountId + txnDate(YYYY-MM-DD) + amountPaise + narration[:12])
+  dedupHash       String   @unique
+  txnDate         DateTime
+  valueDate       DateTime?
+  amountPaise     BigInt
+  txnType         String   // CREDIT | DEBIT
+  // Narration: full text NEVER stored. Only a 20-char masked display slice.
+  narrationMasked String   // e.g. "NEFT-HDFC-SALARY-TEC"
+  balance         BigInt?  // running balance if FIP provides it
+  // ── Classification output ──────────────────────────────────────────────────
+  // salary | emi | rent | sip | utility | subscription | bnpl | food | grocery
+  // shopping | fuel | health | travel | education | entertainment | insurance
+  // tax | transfer_in | transfer_out | atm | other
+  category        String   @default("other")
+  subCategory     String?  // e.g. "home_loan" under "emi"; "delivery" under "food"
+  classifiedBy    String   @default("rules") // rules | ml | user_override
+  confidence      Int      @default(0)        // 0–100
+  isRecurring     Boolean  @default(false)
+  recurringGroup  String?  // stable key grouping recurring txns of same type
+  flags           String   @default("[]") // JSON array: ["high_value","unusual_time",...]
+  createdAt       DateTime @default(now())
+
+  @@index([userId, txnDate])
+  @@index([userId, category, txnDate])
+  @@index([accountId, txnDate])
+}
+
+// ─── Khata: Financial Profile ─────────────────────────────────────────────────
+// Single source of truth for a user's financial health. Rebuilt after each
+// transaction fetch + classification cycle. One row per user, upserted in place.
+model UserFinancialProfile {
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Income
+  detectedIncomeType      String   @default("unknown")
+  // unknown | salaried | freelance | business | pension | mixed
+  avgMonthlyCreditPaise   BigInt   @default(0)
+  salaryAmountPaise       BigInt?
+  salaryDay               Int?
+  salaryConsistencyPct    Int      @default(0) // 0–100: months salary arrived on time
+
+  // Fixed expenses
+  avgMonthlyDebitPaise    BigInt   @default(0)
+  fixedExpensesPaise      BigInt   @default(0)  // EMI + rent + SIP + subscriptions
+  variableExpensesPaise   BigInt   @default(0)
+  emiTotalPaise           BigInt   @default(0)
+  emiCount                Int      @default(0)
+  subscriptionCount       Int      @default(0)
+  subscriptionTotalPaise  BigInt   @default(0)
+
+  // Cashflow
+  avgMonthlySurplusPaise  BigInt   @default(0)
+  surplusVolatilityScore  Int      @default(50) // 0=volatile, 100=stable
+  cashflowStabilityScore  Int      @default(50) // composite 0–100
+  debtIncomeRatioPct      Int      @default(0)  // EMI÷income ×100 (FOIR)
+
+  // Behavioral
+  endOfMonthStressScore   Int      @default(0)  // 0–100
+  lifestyleInflationPct   Int      @default(0)  // MoM variable spend growth
+  savingConsistencyPct    Int      @default(0)  // % months user saved in Gullak
+  impulsiveSpendingScore  Int      @default(0)  // 0–100 (late-night + weekend spike)
+
+  // Health composite
+  financialHealthScore    Int      @default(50) // 0–100
+  // fragile | building | stable | growing | thriving
+  financialHealthLabel    String   @default("building")
+
+  // Autopilot signals
+  recommendedSavePaise    BigInt?
+  maxSafeSavePaise        BigInt?
+  emergencyFundStatusPct  Int      @default(0)
+
+  txnMonthsCovered        Int      @default(0)
+  dataAsOf                DateTime?
+  updatedAt               DateTime @updatedAt
+}
+
+// ─── Khata: Monthly Cashflow Snapshots ────────────────────────────────────────
+// Append-only monthly aggregates. Dashboard reads 12 rows max — never full scan.
+model CashflowSnapshot {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthKey      String   // "2026-04"
+  creditPaise   BigInt
+  debitPaise    BigInt
+  surplusPaise  BigInt
+  topCategories String   // JSON: [{category, paise, pct}] — top 5 spending categories
+  savingsPaise  BigInt   @default(0) // amount put into Gullak this month
+  txnCount      Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, monthKey])
+  @@index([userId, monthKey])
+}
+
+// ─── Khata: Financial Insights ───────────────────────────────────────────────
+// Proactive, explainable insights surfaced to the user. Bharat-voice copy.
+// Created by the insight generator after each profile rebuild.
+model FinancialInsight {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // surplus_available | end_of_month_stress | emi_pressure | lifestyle_inflation
+  // saving_streak | spending_spike | salary_arrived | low_balance_risk
+  // subscription_overload | good_month | emergency_fund_gap | income_irregular
+  insightType    String
+  severity       String   @default("info") // info | warn | celebrate
+  // Bharat-voice title + body (stored in English; i18n applied at render)
+  title          String
+  body           String
+  // Data backing this insight — shown when user taps "Kyun?" (Why?)
+  supportingData String   @default("{}") // JSON
+  actionType     String?  // save_now | reduce_sip | build_emergency | view_spending
+  actionPayload  String?  // JSON params for the action
+  isRead         Boolean  @default(false)
+  isDismissed    Boolean  @default(false)
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, isRead, isDismissed, createdAt])
+}
+
+// ─── Khata: Autopilot Recommendations ────────────────────────────────────────
+// Actionable, explainable recommendations from the intelligence engine.
+// Every rec has a reasoning field — always shown to user (never a black box).
+model AutopilotRecommendation {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // adjust_save_amount | pause_autopilot | resume_autopilot | increase_sip
+  // reduce_sip | build_emergency_fund | start_sip | allocate_surplus | debt_paydown
+  recType             String
+  currentValuePaise   BigInt?
+  suggestedValuePaise BigInt?
+  reasoning           String   // plain Hinglish "why" — always visible to user
+  confidenceScore     Int      @default(70) // 0–100
+  // pending | accepted | rejected | snoozed | expired
+  status              String   @default("pending")
+  source              String   @default("khata") // khata | ml
+  acceptedAt          DateTime?
+  rejectedAt          DateTime?
+  snoozedUntil        DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime @default(now())
+
+  @@index([userId, status, createdAt])
 }
 
 // OCEN — Open Credit Enablement Network. Mocked.
