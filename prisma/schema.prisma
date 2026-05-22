@@ -243,9 +243,17 @@ model Mandate {
   ruleId           String    @unique
   rule             AutopilotRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   maxPerDebitPaise BigInt
-  cap              String // daily | weekly | monthly
+  cap              String    // daily | weekly | monthly
+  // Status lifecycle: PENDING → ACTIVE → HALTED | REVOKED | EXPIRED
+  status           String    @default("PENDING") // PENDING | ACTIVE | HALTED | REVOKED | EXPIRED
+  // Phase 3 — Razorpay UPI Autopay fields (null in mock mode)
+  pspSubscriptionId String?  // Razorpay subscription_id (sub_xxx)
+  upiMandateUrn    String?   // NPCI URN returned in subscription.authenticated webhook
   authorisedAt     DateTime  @default(now())
+  activatedAt      DateTime? // set when subscription.authenticated webhook fires
   revokedAt        DateTime?
+
+  @@index([userId, status])
 }
 
 model Transaction {

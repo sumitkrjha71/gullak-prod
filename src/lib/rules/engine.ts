@@ -2,7 +2,7 @@
 // and how much?" then calls payments.execute().
 
 import { prisma } from '@/lib/db/client';
-import { execute } from '@/lib/payments';
+import { execute, isPaymentsReal } from '@/lib/payments';
 import { buildIdempotencyKey } from '@/lib/idempotency/key';
 import { istDayOfMonth } from '@/lib/format/date';
 import type { SimResult } from '@/lib/payments/simulate';
@@ -19,8 +19,8 @@ export type CronRunResult = {
 /** Run all FIXED-mode rules that are due today. */
 export async function runDailySaveCron(now: Date = new Date()): Promise<CronRunResult> {
   const rules = await prisma.autopilotRule.findMany({
-    where: { mode: 'fixed', status: 'active' },
-    include: { goal: true },
+    where:   { mode: 'fixed', status: 'active' },
+    include: { goal: true, mandate: true },
   });
   return runRules(rules, now, 'fixed');
 }
@@ -29,19 +29,27 @@ export async function runDailySaveCron(now: Date = new Date()): Promise<CronRunR
 export async function runSalarySweepCron(now: Date = new Date()): Promise<CronRunResult> {
   const today = istDayOfMonth(now);
   const rules = await prisma.autopilotRule.findMany({
-    where: { mode: 'sweep', status: 'active', user: { salaryDay: today } },
-    include: { goal: true, user: true },
+    where:   { mode: 'sweep', status: 'active', user: { salaryDay: today } },
+    include: { goal: true, user: true, mandate: true },
   });
   return runRules(rules, now, 'sweep');
 }
 
 async function runRules(
-  rules: Array<{ id: string; userId: string; goalId: string; amountPaise: bigint | null; pauseUntil: Date | null; frequency: string | null }>,
+  rules: Array<{ id: string; userId: string; goalId: string; amountPaise: bigint | null; pauseUntil: Date | null; frequency: string | null; mandate?: { pspSubscriptionId: string | null; status: string } | null }>,
   now: Date,
   source: 'fixed' | 'sweep',
 ): Promise<CronRunResult> {
   const result: CronRunResult = { rulesEvaluated: rules.length, rulesFired: 0, successes: 0, failures: 0, replays: 0, details: [] };
   for (const rule of rules) {
+    // In real mode, rules backed by a Razorpay subscription are charged by Razorpay
+    // directly on schedule. The webhook records the debit. The cron must not also
+    // charge — that would be a double-debit.
+    if (isPaymentsReal && rule.mandate?.pspSubscriptionId && rule.mandate.status === 'ACTIVE') {
+      result.details.push({ ruleId: rule.id, userId: rule.userId, skippedReason: 'subscription_managed' });
+      continue;
+    }
+
     if (rule.pauseUntil && rule.pauseUntil > now) {
       result.details.push({ ruleId: rule.id, userId: rule.userId, skippedReason: 'paused' });
       continue;
