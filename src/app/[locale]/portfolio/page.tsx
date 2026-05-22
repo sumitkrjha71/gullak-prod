@@ -356,6 +356,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
       <BottomNav locale={locale} active="portfolio" labels={{
         home: t('dash.navHome'),
         goals: t('dash.navGoals'),
+        khata: 'Khata',
         portfolio: t('dash.navPortfolio'),
         profile: t('dash.navProfile'),
       }} />

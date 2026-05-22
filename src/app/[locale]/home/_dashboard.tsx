@@ -551,10 +551,11 @@ export function Dashboard({
         style={{ borderColor: 'var(--border)' }}
       >
         {[
-          { icon: '🏠', label: labels.navHome, href: `/${locale}/home`, active: true },
-          { icon: '🎯', label: labels.navGoals, href: `/${locale}/goals` },
+          { icon: '🏠', label: labels.navHome,      href: `/${locale}/home`,      active: true },
+          { icon: '🎯', label: labels.navGoals,     href: `/${locale}/goals`     },
+          { icon: '📒', label: 'Khata',             href: `/${locale}/khata`     },
           { icon: '📊', label: labels.navPortfolio, href: `/${locale}/portfolio` },
-          { icon: '👤', label: labels.navProfile, href: `/${locale}/profile` },
+          { icon: '👤', label: labels.navProfile,   href: `/${locale}/profile`   },
         ].map((n) => (
           <Link
             key={n.label}
