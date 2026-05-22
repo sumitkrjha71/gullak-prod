@@ -27,6 +27,7 @@ model User {
   // V5 M9 — referral
   referralCode    String?   @unique
   referredBy      String?   // userId of inviter, null for self-signup
+  email           String?   // optional; required by some MF providers
   // V5 M11 — push subscriptions stored as JSON array
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -339,4 +340,19 @@ model FeatureFlag {
   enabled    Boolean
   rolloutPct Int      @default(100)
   updatedAt  DateTime @updatedAt
+}
+
+// OTP challenge for phone-based auth.
+// Replaces the hardcoded 123456 accept-all in production.
+// One active challenge per phone at a time (previous ones expire naturally).
+model OTPChallenge {
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String    // HMAC-SHA256 of the OTP — never store plaintext
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, expiresAt])
 }

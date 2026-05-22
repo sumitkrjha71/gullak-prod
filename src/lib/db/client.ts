@@ -34,9 +34,8 @@ function buildClient(): PrismaClient {
           throw err;
         }
         const wait = delays[attempt];
-        console.warn(
-          `[prisma] cold-start retry ${attempt + 1}/${delays.length} for ${params.model}.${params.action} in ${wait}ms`,
-        );
+        // Use console.warn here (not logger) — logger imports prisma, which would circular.
+        console.warn(`[prisma] cold-start retry ${attempt + 1}/${delays.length} for ${params.model}.${params.action} in ${wait}ms`);
         await new Promise((r) => setTimeout(r, wait));
       }
     }
