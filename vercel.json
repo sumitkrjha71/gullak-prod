@@ -3,6 +3,7 @@
     { "path": "/api/cron/daily-save", "schedule": "30 3 * * *" },
     { "path": "/api/cron/salary-sweep", "schedule": "30 4 * * *" },
     { "path": "/api/cron/weekly-summary", "schedule": "0 3 * * 1" },
-    { "path": "/api/cron/leaderboard-snapshot", "schedule": "30 20 * * *" }
+    { "path": "/api/cron/leaderboard-snapshot", "schedule": "30 20 * * *" },
+    { "path": "/api/cron/nav-sync", "schedule": "30 14 * * 1-5" }
   ]
 }

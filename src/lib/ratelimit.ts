@@ -25,6 +25,8 @@ const burstLimiter = buildLimiter(5, '1 h');
 const kycLimiter   = buildLimiter(10, '24 h');
 // 10 gold buy/sell transactions per user per day
 const goldLimiter  = buildLimiter(10, '24 h');
+// 10 MF buy/redeem transactions per user per day
+const mfLimiter    = buildLimiter(10, '24 h');
 
 export type RateLimitResult = { allowed: boolean; remaining: number; reset: number };
 
@@ -42,4 +44,5 @@ export const ratelimit = {
   burst: (userId: string) => check(burstLimiter,  `burst:${userId}`),
   kyc:   (userId: string) => check(kycLimiter,    `kyc:${userId}`),
   gold:  (userId: string) => check(goldLimiter,   `gold:${userId}`),
+  mf:    (userId: string) => check(mfLimiter,     `mf:${userId}`),
 };

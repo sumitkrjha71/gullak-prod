@@ -47,12 +47,16 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
 
   const goldProvider = process.env.GOLD_REAL === 'true' ? 'safegold' : 'mock';
 
-  const [goals, goldHolding, goldPrice] = await Promise.all([
+  const [goals, goldHolding, goldPrice, mfHoldings] = await Promise.all([
     prisma.goal.findMany({ where: { userId: session.userId, status: 'active' } }),
     prisma.investmentHolding.findUnique({
       where: { userId_assetType_provider: { userId: session.userId, assetType: 'gold', provider: goldProvider } },
     }),
     getGoldPrice(),
+    prisma.mFHolding.findMany({
+      where:   { userId: session.userId, totalMicroUnits: { gt: 0n } },
+      include: { fund: { select: { schemeName: true, category: true, navPaise: true, navDate: true } } },
+    }),
   ]);
 
   // Pull last 365d of successful transactions for the chart.
@@ -69,6 +73,16 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
     ? Number((goldHolding.totalMicrograms * goldPrice.sellPaisePerGram) / 1_000_000n)
     : 0;
   const goldPnl         = goldCurrentPaise - goldInvested;
+
+  // MF totals
+  const mfTotalInvested = mfHoldings.reduce((s, h) => s + Number(h.investedPaise), 0);
+  const mfTotalValue    = mfHoldings.reduce((h, holding) => {
+    const val = holding.fund.navPaise > 0n
+      ? Number((holding.totalMicroUnits * holding.fund.navPaise) / 1_000_000n)
+      : Number(holding.investedPaise);
+    return h + val;
+  }, 0);
+  const mfPnl           = mfTotalValue - mfTotalInvested;
 
   const totalSaved = goals.reduce((s, g) => s + Number(g.savedPaise), 0);
   const totalGrowth = goals.reduce((s, g) => s + Number(g.growthPaise), 0);
@@ -214,6 +228,65 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
             </div>
           </div>
         </div>
+
+        {/* Phase 5 — Mutual Fund holdings */}
+        {mfHoldings.length > 0 ? (
+          <div className="mt-4 flex flex-col gap-2">
+            <h2 className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--trust)' }}>
+              Mutual Funds
+            </h2>
+            {mfHoldings.map((h) => {
+              const val     = h.fund.navPaise > 0n ? Number((h.totalMicroUnits * h.fund.navPaise) / 1_000_000n) : Number(h.investedPaise);
+              const inv     = Number(h.investedPaise);
+              const pnl     = val - inv;
+              const units   = (Number(h.totalMicroUnits) / 1_000_000).toFixed(4);
+              return (
+                <div
+                  key={h.schemeCode}
+                  className="flex items-center justify-between px-4 py-3"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)' }}
+                >
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+                      {h.fund.schemeName.split('—')[0].trim()}
+                    </div>
+                    <div className="text-[10px]" style={{ color: 'var(--muted)' }}>
+                      {units} units · NAV ₹{(Number(h.fund.navPaise) / 100).toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="num text-[14px] font-extrabold" style={{ color: 'var(--text)' }}>
+                      ₹{fmt(val)}
+                    </div>
+                    <div className="text-[10px] font-bold" style={{ color: pnl >= 0 ? 'var(--growth)' : '#C0392B' }}>
+                      {pnl >= 0 ? '+' : ''}₹{fmt(pnl)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <div
+              className="flex items-center justify-between px-4 py-2"
+              style={{ background: 'var(--trust-soft)', borderRadius: 'var(--radius-card)', border: '1px solid #b8e6dc' }}
+            >
+              <span className="text-[11px] font-bold" style={{ color: 'var(--trust)' }}>MF Total</span>
+              <span className="num text-[13px] font-extrabold" style={{ color: mfPnl >= 0 ? 'var(--growth)' : '#C0392B' }}>
+                ₹{fmt(mfTotalValue)} ({mfPnl >= 0 ? '+' : ''}{mfTotalInvested > 0 ? ((mfPnl / mfTotalInvested) * 100).toFixed(1) : '0'}%)
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="mt-4 px-4 py-4 text-center"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-lg)' }}
+          >
+            <div style={{ fontSize: 20 }}>📋</div>
+            <div className="mt-1 text-[12px] font-bold" style={{ color: 'var(--text)' }}>Mutual Funds mein invest karo</div>
+            <div className="mt-0.5 text-[11px]" style={{ color: 'var(--muted)' }}>
+              Index se ELSS tak — 5 curated funds, sab direct plan
+            </div>
+          </div>
+        )}
 
         {/* Why these instruments */}
         <div

@@ -57,6 +57,8 @@ model User {
   consents          UserConsent[]
   holdings          InvestmentHolding[]
   investmentTxns    InvestmentTransaction[]
+  mfHoldings        MFHolding[]
+  mfTransactions    MFTransaction[]
 }
 
 // V5 M9 — Referral tracking. Real DB rows; reward is a mock ₹100 credit entry.
@@ -479,4 +481,80 @@ model InvestmentTransaction {
 
   @@index([userId, assetType, createdAt])
   @@index([holdingId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 5 — Mutual Funds (Kaagaz)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Curated fund catalog. Seeded + updated daily by the nav-sync cron.
+// navPaise stores NAV in paise (₹155.23 → 15523) — BigInt, no floats.
+// Units held in micro-units (×1,000,000) across MFHolding and MFTransaction.
+model MutualFund {
+  id          String   @id @default(cuid())
+  schemeCode  String   @unique  // AMFI scheme code (e.g. "122639")
+  isin        String?
+  schemeName  String
+  amcName     String
+  // category: index | equity | elss | liquid | hybrid | debt
+  category    String
+  subCategory String?  // large_cap | mid_cap | flexi_cap | small_cap | etc.
+  navPaise    BigInt   @default(0) // latest NAV in paise
+  navDate     String?  // YYYY-MM-DD of the above NAV
+  minSipPaise BigInt   @default(50000)  // ₹500 default minimum SIP
+  isCurated   Boolean  @default(false)  // show in Gullak's fund picker
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  holdings     MFHolding[]
+  transactions MFTransaction[]
+
+  @@index([category, isCurated])
+}
+
+// Per-user per-fund holding. One row; updated on every buy/redeem.
+model MFHolding {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schemeCode        String
+  fund              MutualFund @relation(fields: [schemeCode], references: [schemeCode])
+  // micro-units: 1 unit = 1_000_000 micro-units (preserves 6 decimal places)
+  totalMicroUnits   BigInt   @default(0)
+  avgNavPaise       BigInt   @default(0)  // weighted average entry NAV
+  investedPaise     BigInt   @default(0)
+  currentValuePaise BigInt   @default(0)  // refreshed by nav-sync cron
+  lastPricedAt      DateTime?
+  folioNumber       String?  // assigned by BSE StAR MF / AMC in real mode
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, schemeCode])
+  @@index([userId])
+}
+
+// Every purchase/redemption transaction for a mutual fund.
+model MFTransaction {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schemeCode     String
+  fund           MutualFund @relation(fields: [schemeCode], references: [schemeCode])
+  // buy | redeem | sip_installment
+  txnType        String
+  amountPaise    BigInt
+  // micro-units allotted/redeemed (may be null while status=pending in real mode)
+  microUnits     BigInt?
+  navPaise       BigInt?  // NAV at time of allotment
+  // Order refs
+  pspRefId       String?  // BSE order no. / provider ref
+  pspRawJson     String?
+  // pending → allotted (T+1 in real mode) | failed | reversed
+  status         String   @default("allotted")
+  idempotencyKey String   @unique
+  goalId         String?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, schemeCode, createdAt])
 }
