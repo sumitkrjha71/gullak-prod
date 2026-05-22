@@ -14,44 +14,75 @@ import { logger } from '@/lib/logger';
 // These represent the five core categories Gullak surfaces to users.
 export const CURATED_FUNDS = [
   {
-    schemeCode:  '122639',
-    schemeName:  'Parag Parikh Flexi Cap Fund — Direct Growth',
-    amcName:     'PPFAS Mutual Fund',
-    category:    'equity',
-    subCategory: 'flexi_cap',
-    minSipPaise: 100000n, // ₹1,000
+    schemeCode:      '122639',
+    schemeName:      'Parag Parikh Flexi Cap Fund — Direct Growth',
+    amcName:         'PPFAS Mutual Fund',
+    category:        'equity',
+    subCategory:     'flexi_cap',
+    minSipPaise:     100000n, // ₹1,000
+    // SEBI Riskometer: very_high (flexi-cap equity)
+    riskCategory:    'very_high',
+    // 1% exit load if redeemed within 365 days; NIL after
+    exitLoadPct:     100,
+    exitLoadDays:    365,
+    // Direct plan expense ratio as per latest AMFI disclosure
+    expenseRatioBps: 57,  // 0.57%
   },
   {
-    schemeCode:  '135001',
-    schemeName:  'UTI Nifty 50 Index Fund — Direct Growth',
-    amcName:     'UTI Mutual Fund',
-    category:    'index',
-    subCategory: 'large_cap',
-    minSipPaise: 50000n,  // ₹500
+    schemeCode:      '135001',
+    schemeName:      'UTI Nifty 50 Index Fund — Direct Growth',
+    amcName:         'UTI Mutual Fund',
+    category:        'index',
+    subCategory:     'large_cap',
+    minSipPaise:     50000n, // ₹500
+    // SEBI Riskometer: very_high (equity index)
+    riskCategory:    'very_high',
+    // No exit load on index funds
+    exitLoadPct:     0,
+    exitLoadDays:    0,
+    expenseRatioBps: 18,  // 0.18%
   },
   {
-    schemeCode:  '119598',
-    schemeName:  'Axis ELSS Tax Saver Fund — Direct Growth',
-    amcName:     'Axis Mutual Fund',
-    category:    'elss',
-    subCategory: 'large_cap',
-    minSipPaise: 50000n,  // ₹500
+    schemeCode:      '119598',
+    schemeName:      'Axis ELSS Tax Saver Fund — Direct Growth',
+    amcName:         'Axis Mutual Fund',
+    category:        'elss',
+    subCategory:     'large_cap',
+    minSipPaise:     50000n, // ₹500
+    // SEBI Riskometer: very_high (equity ELSS)
+    riskCategory:    'very_high',
+    // ELSS: 3-year statutory lock-in; exit load not applicable during lock-in
+    exitLoadPct:     0,
+    exitLoadDays:    0,
+    expenseRatioBps: 70,  // 0.70%
   },
   {
-    schemeCode:  '101206',
-    schemeName:  'HDFC Liquid Fund — Direct Growth',
-    amcName:     'HDFC Mutual Fund',
-    category:    'liquid',
-    subCategory: null,
-    minSipPaise: 500000n, // ₹5,000
+    schemeCode:      '101206',
+    schemeName:      'HDFC Liquid Fund — Direct Growth',
+    amcName:         'HDFC Mutual Fund',
+    category:        'liquid',
+    subCategory:     null,
+    minSipPaise:     500000n, // ₹5,000
+    // SEBI Riskometer: low_to_moderate
+    riskCategory:    'low_to_moderate',
+    // Liquid funds: graded exit load (0.0070% day 1 → 0% after day 7)
+    exitLoadPct:     1,    // 0.01% — represented as fraction of 100
+    exitLoadDays:    7,
+    expenseRatioBps: 20,  // 0.20%
   },
   {
-    schemeCode:  '120586',
-    schemeName:  'ICICI Prudential Balanced Advantage Fund — Direct Growth',
-    amcName:     'ICICI Prudential Mutual Fund',
-    category:    'hybrid',
-    subCategory: 'balanced',
-    minSipPaise: 50000n,  // ₹500
+    schemeCode:      '120586',
+    schemeName:      'ICICI Prudential Balanced Advantage Fund — Direct Growth',
+    amcName:         'ICICI Prudential Mutual Fund',
+    category:        'hybrid',
+    subCategory:     'balanced',
+    minSipPaise:     50000n, // ₹500
+    // SEBI Riskometer: moderately_high (BAF/dynamic asset allocation)
+    riskCategory:    'moderately_high',
+    // 1% exit load within 1 year
+    exitLoadPct:     100,
+    exitLoadDays:    365,
+    expenseRatioBps: 76,  // 0.76%
   },
 ] as const;
 
@@ -114,20 +145,29 @@ export async function syncNavs(): Promise<NavSyncResult> {
       await prisma.mutualFund.upsert({
         where:  { schemeCode: fund.schemeCode },
         create: {
-          schemeCode:  fund.schemeCode,
-          schemeName:  nav.schemeName || fund.schemeName,
-          amcName:     nav.fundHouse  || fund.amcName,
-          category:    fund.category,
-          subCategory: fund.subCategory ?? null,
-          navPaise:    nav.navPaise,
-          navDate:     nav.navDate,
-          minSipPaise: fund.minSipPaise,
-          isCurated:   true,
-          isActive:    true,
+          schemeCode:      fund.schemeCode,
+          schemeName:      nav.schemeName || fund.schemeName,
+          amcName:         nav.fundHouse  || fund.amcName,
+          category:        fund.category,
+          subCategory:     fund.subCategory ?? null,
+          navPaise:        nav.navPaise,
+          navDate:         nav.navDate,
+          minSipPaise:     fund.minSipPaise,
+          riskCategory:    fund.riskCategory,
+          exitLoadPct:     fund.exitLoadPct,
+          exitLoadDays:    fund.exitLoadDays,
+          expenseRatioBps: fund.expenseRatioBps,
+          isCurated:       true,
+          isActive:        true,
         },
         update: {
-          navPaise: nav.navPaise,
-          navDate:  nav.navDate,
+          navPaise:        nav.navPaise,
+          navDate:         nav.navDate,
+          // Keep compliance fields current on each sync
+          riskCategory:    fund.riskCategory,
+          exitLoadPct:     fund.exitLoadPct,
+          exitLoadDays:    fund.exitLoadDays,
+          expenseRatioBps: fund.expenseRatioBps,
         },
       });
 

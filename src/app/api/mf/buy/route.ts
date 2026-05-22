@@ -1,6 +1,7 @@
 // POST /api/mf/buy — invest in a mutual fund (lumpsum or SIP installment).
-// KYC required. Amount ≥ fund's minSipPaise. Max ₹1,00,000 per transaction.
+// KYC + suitability check required. Amount ≥ fund's minSipPaise. Max ₹1,00,000 per transaction.
 // Uses current on-disk NAV (updated daily by nav-sync cron).
+// Response includes SEBI-mandated compliance disclosures.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -12,6 +13,7 @@ import { buyMF } from '@/lib/mf/bsemf';
 import { buildIdempotencyKey } from '@/lib/idempotency/key';
 import { writeAudit } from '@/lib/audit/log';
 import { logger } from '@/lib/logger';
+import { isSuitable, type RiskProfileLabel } from '@/lib/kyc/risk-profile';
 
 const schema = z.object({
   schemeCode:  z.string().min(1).max(20),
@@ -40,8 +42,12 @@ export async function POST(req: NextRequest) {
 
     const { schemeCode, amountPaise, txnType, goalId } = body.data;
 
-    // Validate fund exists and amount meets minimum
-    const fund = await prisma.mutualFund.findUnique({ where: { schemeCode } });
+    // Fetch fund + user's risk profile in parallel
+    const [fund, riskProfile] = await Promise.all([
+      prisma.mutualFund.findUnique({ where: { schemeCode } }),
+      prisma.riskProfile.findUnique({ where: { userId: session.userId } }),
+    ]);
+
     if (!fund || !fund.isActive) {
       return NextResponse.json({ ok: false, error: 'fund_not_found' }, { status: 404 });
     }
@@ -56,11 +62,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'nav_not_available' }, { status: 503 });
     }
 
+    // SEBI suitability gate — check fund risk vs user's risk profile.
+    // Warn (not block) if no profile yet — SEBI allows self-declaration override.
+    if (riskProfile && !isSuitable(fund.riskCategory, riskProfile.profile as RiskProfileLabel)) {
+      await writeAudit({
+        userId:    session.userId,
+        eventType: 'SUITABILITY_BLOCKED',
+        payload:   { schemeCode, fundRisk: fund.riskCategory, investorProfile: riskProfile.profile },
+        source:    'system',
+      });
+      return NextResponse.json({
+        ok:               false,
+        error:            'suitability_mismatch',
+        fundRiskCategory: fund.riskCategory,
+        investorProfile:  riskProfile.profile,
+        message:          'This fund\'s risk level is higher than your risk profile. Please retake your risk assessment or choose a fund that matches your profile.',
+      }, { status: 422 });
+    }
+
     const amountPaiseBn = BigInt(amountPaise);
+    // Client must send X-Idempotency-Key (UUID) before submitting.
+    const clientKey = req.headers.get('x-idempotency-key') ?? crypto.randomUUID();
     const idempotencyKey = buildIdempotencyKey({
       userId: session.userId,
       source: 'mf_buy',
-      slot:   `${schemeCode}-${Date.now()}`,
+      slot:   clientKey,
     });
 
     // Idempotency check
@@ -137,14 +163,28 @@ export async function POST(req: NextRequest) {
 
     logger.info({ userId, txnId: txn.id, schemeCode, amountPaise, status: result.status }, 'mf_buy_completed');
 
+    // SEBI-mandated disclosures included in every order response.
+    const exitLoadWarning = fund.exitLoadPct > 0
+      ? `Exit load of ${(fund.exitLoadPct / 100).toFixed(2)}% applies if redeemed within ${fund.exitLoadDays} days.`
+      : 'No exit load.';
+
     return NextResponse.json({
       ok:          true,
       txnId:       txn.id,
       pspRefId:    result.pspRefId,
       unitsAdded,
       navRs:       (Number(result.navPaise) / 100).toFixed(4),
+      navDate:     fund.navDate ?? null,
       status:      result.status,
       amountPaise: amountPaise.toString(),
+      // Compliance disclosures
+      disclosures: {
+        sebiWarning:      'Mutual Fund investments are subject to market risks. Read all scheme-related documents carefully before investing.',
+        riskCategory:     fund.riskCategory,
+        expenseRatioNote: `Annual expense ratio: ${(fund.expenseRatioBps / 100).toFixed(2)}% (Direct plan).`,
+        exitLoadNote:     exitLoadWarning,
+        navNote:          `NAV used: ₹${(Number(result.navPaise) / 100).toFixed(4)} as of ${fund.navDate ?? 'today'}. Actual allotment NAV may differ in real mode (T+1 rule).`,
+      },
     });
 
   } catch (err) {

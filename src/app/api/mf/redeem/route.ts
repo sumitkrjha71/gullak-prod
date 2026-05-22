@@ -58,19 +58,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'nav_not_available' }, { status: 503 });
     }
 
-    // ELSS lock-in: 3-year lock from each investment. Simplified check —
-    // in real mode BSE StAR MF enforces this server-side.
+    // ELSS lock-in: 3-year lock from first purchase. Uses setFullYear to handle
+    // leap years correctly (365×3 days would drift by ~18 hours over 3 years).
+    // In real mode BSE StAR MF also enforces this server-side.
     if (fund.category === 'elss') {
-      const threeYearsAgo = new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000);
-      if (holding.createdAt > threeYearsAgo) {
-        return NextResponse.json({ ok: false, error: 'elss_lock_in' }, { status: 422 });
+      const lockInExpiry = new Date(holding.createdAt);
+      lockInExpiry.setFullYear(lockInExpiry.getFullYear() + 3);
+      if (new Date() < lockInExpiry) {
+        const expiryDateStr = lockInExpiry.toISOString().slice(0, 10);
+        return NextResponse.json({ ok: false, error: 'elss_lock_in', lockInExpiresOn: expiryDateStr }, { status: 422 });
       }
     }
 
+    // Client must send X-Idempotency-Key (UUID) before submitting. This ensures
+    // retries reuse the same key and don't create duplicate transactions.
+    const clientKey = req.headers.get('x-idempotency-key') ?? crypto.randomUUID();
     const idempotencyKey = buildIdempotencyKey({
       userId: session.userId,
       source: 'mf_redeem',
-      slot:   `${schemeCode}-${Date.now()}`,
+      slot:   clientKey,
     });
 
     const existing = await prisma.mFTransaction.findUnique({ where: { idempotencyKey } });
@@ -120,6 +126,11 @@ export async function POST(req: NextRequest) {
 
     logger.info({ userId: session.userId, txnId: txn.id, schemeCode, unitsToRedeem }, 'mf_redeem_completed');
 
+    // Exit load disclosure
+    const exitLoadNote = fund.exitLoadPct > 0
+      ? `Exit load of ${(fund.exitLoadPct / 100).toFixed(2)}% applied if redeemed within ${fund.exitLoadDays} days of purchase.`
+      : 'No exit load on this fund.';
+
     return NextResponse.json({
       ok:            true,
       txnId:         txn.id,
@@ -128,6 +139,11 @@ export async function POST(req: NextRequest) {
       creditedRs:    (Number(result.creditedPaise) / 100).toFixed(2),
       unitsRedeemed: unitsToRedeem,
       status:        result.status,
+      disclosures: {
+        settlementNote: 'Redemption proceeds are credited to your bank account in T+3 business days.',
+        taxNote:        'Short-term capital gains (held < 1 year) taxed at 20%. Long-term gains (> 1 year) taxed at 12.5% above ₹1.25L. Please consult a tax advisor.',
+        exitLoadNote,
+      },
     });
 
   } catch (err) {

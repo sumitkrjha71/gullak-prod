@@ -59,6 +59,8 @@ model User {
   investmentTxns    InvestmentTransaction[]
   mfHoldings        MFHolding[]
   mfTransactions    MFTransaction[]
+  riskProfile       RiskProfile?
+  grievances        GrievanceTicket[]
 }
 
 // V5 M9 — Referral tracking. Real DB rows; reward is a mock ₹100 credit entry.
@@ -501,9 +503,16 @@ model MutualFund {
   subCategory String?  // large_cap | mid_cap | flexi_cap | small_cap | etc.
   navPaise    BigInt   @default(0) // latest NAV in paise
   navDate     String?  // YYYY-MM-DD of the above NAV
-  minSipPaise BigInt   @default(50000)  // ₹500 default minimum SIP
-  isCurated   Boolean  @default(false)  // show in Gullak's fund picker
-  isActive    Boolean  @default(true)
+  minSipPaise      BigInt   @default(50000)  // ₹500 default minimum SIP
+  // SEBI Riskometer: low|low_to_moderate|moderate|moderately_high|high|very_high
+  riskCategory     String   @default("moderate")
+  // Exit load: % × 100 (e.g. 100 = 1%). 0 = no exit load.
+  exitLoadPct      Int      @default(0)
+  exitLoadDays     Int      @default(0)   // exit load applies within this many days
+  // Expense ratio in basis points (e.g. 50 = 0.50%)
+  expenseRatioBps  Int      @default(0)
+  isCurated        Boolean  @default(false)  // show in Gullak's fund picker
+  isActive         Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -557,4 +566,69 @@ model MFTransaction {
   createdAt      DateTime @default(now())
 
   @@index([userId, schemeCode, createdAt])
+}
+
+// ─── Risk Profiling ───────────────────────────────────────────────────────────
+// SEBI requires a suitability / risk assessment before recommending MF products.
+// One row per user; replaced (not versioned) on retake.
+// profile: conservative | moderate | moderately_aggressive | aggressive
+model RiskProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Score derived from 5-question questionnaire (max 20)
+  score     Int
+  // Bucketed label from score
+  profile   String   // conservative | moderate | moderately_aggressive | aggressive
+  // Raw answers stored for audit
+  answers   String   // JSON array of {questionId, answer, points}
+  takenAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ─── Reconciliation ───────────────────────────────────────────────────────────
+// Tracks daily reconciliation runs across all asset classes.
+// One row per scheduled run; filled in by the recon cron job.
+model ReconciliationRun {
+  id               String    @id @default(cuid())
+  runDate          String    // YYYY-MM-DD
+  assetClass       String    // gold | mf | upi | all
+  totalUsers       Int       @default(0)
+  matched          Int       @default(0)  // provider balance == our DB balance
+  mismatched       Int       @default(0)
+  errors           Int       @default(0)
+  // JSON: [{userId, type, ourValuePaise, providerValuePaise}]
+  mismatchDetails  String?
+  status           String    @default("pending") // pending | running | complete | failed
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+
+  @@unique([runDate, assetClass])
+  @@index([runDate])
+}
+
+// ─── Grievance Redressal ──────────────────────────────────────────────────────
+// SEBI / RBI mandate a grievance redressal mechanism.
+// Tickets must be acknowledged within 3 days and resolved within 30 days.
+model GrievanceTicket {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    String    // payment | investment | kyc | account | other
+  subject     String
+  description String
+  // open | acknowledged | in_progress | resolved | closed
+  status      String    @default("open")
+  // Internal team notes (not shown to user)
+  adminNotes  String?
+  refId       String?   // linked txnId / orderId if applicable
+  acknowledgedAt DateTime?
+  resolvedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
 }

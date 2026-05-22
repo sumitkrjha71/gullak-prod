@@ -31,7 +31,12 @@ export async function validate(args: ExecuteArgs): Promise<{ ok: true } | { ok: 
     if (rule.pauseUntil && rule.pauseUntil > new Date()) return { ok: false, reason: 'rule_paused' };
 
     if (rule.mandate) {
-      if (rule.mandate.revokedAt)                          return { ok: false, reason: 'mandate_revoked' };
+      if (rule.mandate.revokedAt) return { ok: false, reason: 'mandate_revoked' };
+      const ms = rule.mandate.status;
+      if (ms === 'HALTED')  return { ok: false, reason: 'mandate_halted' };
+      if (ms === 'EXPIRED') return { ok: false, reason: 'mandate_expired' };
+      if (ms === 'REVOKED') return { ok: false, reason: 'mandate_revoked' };
+      if (ms === 'PENDING') return { ok: false, reason: 'mandate_not_yet_active' };
       if (BigInt(args.amountPaise) > rule.mandate.maxPerDebitPaise) {
         return { ok: false, reason: 'amount_over_mandate_cap' };
       }

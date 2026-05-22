@@ -59,10 +59,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'insufficient_gold' }, { status: 422 });
     }
 
+    // Client must send X-Idempotency-Key (UUID) before submitting.
+    const clientKey = req.headers.get('x-idempotency-key') ?? crypto.randomUUID();
     const idempotencyKey = buildIdempotencyKey({
       userId: session.userId,
       source: 'gold_sell',
-      slot:   `sell-${Date.now()}`,
+      slot:   clientKey,
     });
 
     const existing = await prisma.investmentTransaction.findUnique({ where: { idempotencyKey } });
@@ -124,12 +126,17 @@ export async function POST(req: NextRequest) {
     logger.info({ userId: session.userId, txnId: txn.id, gramsToSell, creditedPaise: result.creditedPaise.toString() }, 'gold_sell_completed');
 
     return NextResponse.json({
-      ok:             true,
-      txnId:          txn.id,
-      pspRefId:       result.pspRefId,
-      creditedPaise:  result.creditedPaise.toString(),
-      creditedRs:     (Number(result.creditedPaise) / 100).toFixed(2),
-      gramsSold:      gramsToSell,
+      ok:            true,
+      txnId:         txn.id,
+      pspRefId:      result.pspRefId,
+      creditedPaise: result.creditedPaise.toString(),
+      creditedRs:    (Number(result.creditedPaise) / 100).toFixed(2),
+      gramsSold:     gramsToSell,
+      disclosures: {
+        priceNote:      `Sell price: ₹${(Number(price.sellPaisePerGram) / 100).toFixed(2)}/g (after spread).`,
+        settlementNote: 'Proceeds credited to your registered bank account within 1–2 business days.',
+        taxNote:        'Capital gains apply. Gains on gold held > 3 years are long-term (20% with indexation). Please consult a tax advisor.',
+      },
     });
 
   } catch (err) {

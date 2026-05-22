@@ -41,10 +41,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { amountPaise, goalId } = body.data;
+    // Client must send X-Idempotency-Key (UUID) before submitting.
+    const clientKey = req.headers.get('x-idempotency-key') ?? crypto.randomUUID();
     const idempotencyKey = buildIdempotencyKey({
       userId: session.userId,
       source: 'gold_buy',
-      slot:   `buy-${Date.now()}`,
+      slot:   clientKey,
     });
 
     // Idempotency check — return existing if this key already processed
@@ -132,13 +134,20 @@ export async function POST(req: NextRequest) {
 
     logger.info({ userId: session.userId, txnId: txn.id, amountPaise, gramsAdded }, 'gold_buy_completed');
 
+    const buySpreadPct = ((Number(price.buyPaisePerGram - price.sellPaisePerGram) / Number(price.buyPaisePerGram)) * 100).toFixed(2);
+
     return NextResponse.json({
-      ok:         true,
-      txnId:      txn.id,
-      pspRefId:   result.pspRefId,
+      ok:          true,
+      txnId:       txn.id,
+      pspRefId:    result.pspRefId,
       gramsAdded,
       totalGrams,
       amountPaise: amountPaise.toString(),
+      disclosures: {
+        priceNote:  `Buy price: ₹${(Number(price.buyPaisePerGram) / 100).toFixed(2)}/g (inclusive of GST). Sell price is lower by ~${buySpreadPct}% spread.`,
+        taxNote:    'Gold is subject to 3% GST on purchase. Long-term capital gains (held > 3 years) taxed at 20% with indexation.',
+        safetyNote: 'Digital gold is 24K 999.9 purity, stored in insured vaults by SafeGold. You can take physical delivery.',
+      },
     });
 
   } catch (err) {

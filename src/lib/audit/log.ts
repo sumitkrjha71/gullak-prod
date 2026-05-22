@@ -28,7 +28,11 @@ export type AuditEventType =
   | 'FLAG_CHANGED'
   | 'WEEKLY_SUMMARY_GENERATED'
   | 'ROUNDUP_BUCKET_UPDATED'
-  | 'NOTIFICATION_CREATED';
+  | 'NOTIFICATION_CREATED'
+  | 'RISK_PROFILE_SUBMITTED'
+  | 'SUITABILITY_BLOCKED'
+  | 'GRIEVANCE_CREATED'
+  | 'GRIEVANCE_RESOLVED';
 
 export async function writeAudit(args: {
   userId?: string | null;

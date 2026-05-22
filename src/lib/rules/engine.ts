@@ -59,8 +59,9 @@ async function runRules(
       continue;
     }
     if (source === 'fixed' && rule.frequency === 'weekly') {
-      // Weekly fixed-mode rules fire on Mondays only.
-      const dayOfWeek = now.getUTCDay();
+      // Weekly fixed-mode rules fire on Mondays only — use IST date, not UTC.
+      const nowIstMs = now.getTime() + 330 * 60 * 1000;
+      const dayOfWeek = new Date(nowIstMs).getUTCDay();
       if (dayOfWeek !== 1) {
         result.details.push({ ruleId: rule.id, userId: rule.userId, skippedReason: 'weekly_not_today' });
         continue;
