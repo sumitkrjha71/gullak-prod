@@ -6,12 +6,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/client';
+import { ensureKYC } from '@/lib/kyc/gate';
+import { logger } from '@/lib/logger';
 
 export const maxDuration = 15;
 
 export async function POST(req: NextRequest) {
   const session = await readSession();
   if (!session) return NextResponse.json({ ok: false }, { status: 401 });
+
+  const kycGate = await ensureKYC(session.userId);
+  if (kycGate) return kycGate;
 
   const { ruleId } = await req.json();
   if (typeof ruleId !== 'string' || ruleId.length === 0) {
@@ -37,7 +42,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error('[api/autopilot/mandate] failed:', (err as Error)?.message);
+    logger.error({ route: 'autopilot/mandate', err: (err as Error)?.message }, 'mandate_failed');
     return NextResponse.json({ ok: false, error: 'mandate_failed' }, { status: 500 });
   }
 }

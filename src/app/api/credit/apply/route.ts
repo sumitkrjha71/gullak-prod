@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readSession } from '@/lib/auth/session';
 import { applyForLoan, disburse } from '@/lib/ocen';
+import { ensureKYC } from '@/lib/kyc/gate';
 
 export async function POST(req: NextRequest) {
   const session = await readSession();
   if (!session) return NextResponse.json({ ok: false }, { status: 401 });
+
+  const kycGate = await ensureKYC(session.userId);
+  if (kycGate) return kycGate;
   const { offerId } = await req.json();
   if (typeof offerId !== 'string') return NextResponse.json({ ok: false, error: 'bad_input' }, { status: 400 });
 

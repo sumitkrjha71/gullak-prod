@@ -22,32 +22,39 @@ model User {
   salaryDay       Int?
   isSalaried      Boolean  @default(false)
   lifecycleState  String   @default("NEW") // NEW | ONBOARDING | TRUST_ACKNOWLEDGED | GOAL_CREATED | AUTOPILOT_CONFIGURED | MANDATE_PENDING | ACTIVE | PAUSED
-  kycCompleted    Boolean  @default(false)
+  kycCompleted      Boolean  @default(false)
   aaConsentLinkedAt DateTime?
+  // KYC fields (Phase 1)
+  panLast4          String?  // last 4 chars of PAN — display only, never full PAN
+  nomineeName       String?
+  nomineeRelation   String?  // self | spouse | parent | child | sibling | other
+  nomineeDob        String?  // YYYY-MM-DD string — not DateTime to avoid TZ issues
   // V5 M9 — referral
-  referralCode    String?   @unique
-  referredBy      String?   // userId of inviter, null for self-signup
-  email           String?   // optional; required by some MF providers
+  referralCode      String?  @unique
+  referredBy        String?  // userId of inviter, null for self-signup
+  email             String?  // optional; required by some MF providers
   // V5 M11 — push subscriptions stored as JSON array
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  goals           Goal[]
-  goalMemberships GoalMember[]
-  rules           AutopilotRule[]
-  mandates        Mandate[]
-  transactions    Transaction[]
-  events          SavingsEvent[]
-  auditLogs       AuditLog[]
-  streak          Streak?
-  notifications   Notification[]
-  preferences     UserPreference?
-  roundupBucket   RoundupBucket?
-  aaConsents      AAConsent[]
-  loanOffers      LoanOffer[]
-  loanApplications LoanApplication[]
-  referralsMade   Referral[] @relation("Referrer")
+  goals             Goal[]
+  goalMemberships   GoalMember[]
+  rules             AutopilotRule[]
+  mandates          Mandate[]
+  transactions      Transaction[]
+  events            SavingsEvent[]
+  auditLogs         AuditLog[]
+  streak            Streak?
+  notifications     Notification[]
+  preferences       UserPreference?
+  roundupBucket     RoundupBucket?
+  aaConsents        AAConsent[]
+  loanOffers        LoanOffer[]
+  loanApplications  LoanApplication[]
+  referralsMade     Referral[]        @relation("Referrer")
   pushSubscriptions PushSubscription[]
+  kycRecords        KYCRecord[]
+  consents          UserConsent[]
 }
 
 // V5 M9 — Referral tracking. Real DB rows; reward is a mock ₹100 credit entry.
@@ -355,4 +362,40 @@ model OTPChallenge {
   createdAt  DateTime  @default(now())
 
   @@index([phone, expiresAt])
+}
+
+// KYC verification audit trail (Phase 1).
+// One row per verification attempt. The latest VERIFIED row = user's KYC status.
+// Never store full PAN or Aadhaar — only masked references and provider tokens.
+model KYCRecord {
+  id                    String    @id @default(cuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                  String    // PAN | AADHAAR | CKYC
+  status                String    @default("PENDING") // PENDING | VERIFIED | FAILED | EXPIRED
+  provider              String    // setu | idfy | digilocker | manual
+  providerRef           String?   // provider's transaction/reference ID
+  providerResponseJson  String?   // raw provider response (encrypted at rest via OTP_HMAC_SECRET)
+  maskedIdentifier      String?   // e.g. "ABCPX1234X" → "ABCPX****X" for display
+  verifiedAt            DateTime?
+  expiresAt             DateTime? // some KYCs expire (e.g. video KYC valid 6 months)
+  createdAt             DateTime  @default(now())
+
+  @@index([userId, type, status])
+}
+
+// DPDP Act 2023 consent log (Phase 1).
+// Every consent action — accept or revoke — gets a row. Immutable append-only.
+model UserConsent {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentType     String   // TERMS | PRIVACY | MANDATE | AA | MARKETING
+  documentVersion String   // e.g. "v1.0" — bump when T&C/policy changes
+  action          String   @default("ACCEPTED") // ACCEPTED | REVOKED
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId, consentType])
 }
