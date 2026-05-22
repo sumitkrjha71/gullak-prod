@@ -23,6 +23,8 @@ const otpLimiter   = buildLimiter(3, '10 m');
 const burstLimiter = buildLimiter(5, '1 h');
 // 10 KYC verifications per user per day
 const kycLimiter   = buildLimiter(10, '24 h');
+// 10 gold buy/sell transactions per user per day
+const goldLimiter  = buildLimiter(10, '24 h');
 
 export type RateLimitResult = { allowed: boolean; remaining: number; reset: number };
 
@@ -39,4 +41,5 @@ export const ratelimit = {
   otp:   (phone: string)  => check(otpLimiter,   `otp:${phone}`),
   burst: (userId: string) => check(burstLimiter,  `burst:${userId}`),
   kyc:   (userId: string) => check(kycLimiter,    `kyc:${userId}`),
+  gold:  (userId: string) => check(goldLimiter,   `gold:${userId}`),
 };

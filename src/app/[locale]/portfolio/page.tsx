@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { TrendingUp, Shield, Coins, FileText, Info } from 'lucide-react';
 import { readSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/client';
+import { getGoldPrice } from '@/lib/gold/price-cache';
 import { BottomNav } from '@/components/nav/BottomNav';
 import { MunafaChart } from '@/components/money/MunafaChart';
 import { buildChartSeries } from '@/lib/money/series';
@@ -44,9 +45,15 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
   const session = await readSession();
   if (!session) redirect(`/${locale}`);
 
-  const goals = await prisma.goal.findMany({
-    where: { userId: session.userId, status: 'active' },
-  });
+  const goldProvider = process.env.GOLD_REAL === 'true' ? 'safegold' : 'mock';
+
+  const [goals, goldHolding, goldPrice] = await Promise.all([
+    prisma.goal.findMany({ where: { userId: session.userId, status: 'active' } }),
+    prisma.investmentHolding.findUnique({
+      where: { userId_assetType_provider: { userId: session.userId, assetType: 'gold', provider: goldProvider } },
+    }),
+    getGoldPrice(),
+  ]);
 
   // Pull last 365d of successful transactions for the chart.
   const since = new Date(Date.now() - 365 * 86400000);
@@ -54,6 +61,14 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
     where: { userId: session.userId, status: 'success', createdAt: { gte: since } },
     orderBy: { createdAt: 'asc' },
   });
+
+  // Gold P&L
+  const goldGrams       = goldHolding ? Number(goldHolding.totalMicrograms) / 1_000_000 : 0;
+  const goldInvested    = goldHolding ? Number(goldHolding.investedPaise) : 0;
+  const goldCurrentPaise = goldHolding
+    ? Number((goldHolding.totalMicrograms * goldPrice.sellPaisePerGram) / 1_000_000n)
+    : 0;
+  const goldPnl         = goldCurrentPaise - goldInvested;
 
   const totalSaved = goals.reduce((s, g) => s + Number(g.savedPaise), 0);
   const totalGrowth = goals.reduce((s, g) => s + Number(g.growthPaise), 0);
@@ -154,6 +169,50 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
         {/* V5 M5 — Instrument allocation pie chart (replaces static breakdown) */}
         <div className="mt-4">
           <InstrumentPie size={220} totalRupees={Math.round(totalDisplay / 100)} />
+        </div>
+
+        {/* Phase 4 — Digital Gold holding card */}
+        <div
+          className="mt-4 px-4 py-4"
+          style={{
+            background:   'linear-gradient(135deg, #FFF8E1, #FFF3CD)',
+            border:       '1.5px solid #D4A017',
+            borderRadius: 'var(--radius-card-lg)',
+            boxShadow:    '0 4px 14px rgba(212,160,23,0.14)',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: 20 }}>🪙</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#7B5800' }}>Digital Sona</div>
+                <div style={{ fontSize: 10, color: '#A07010', fontWeight: 600 }}>
+                  {goldGrams > 0 ? `${goldGrams.toFixed(4)}g held` : 'Abhi kuch nahi — pehli kharid karein'}
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="num" style={{ fontSize: 18, fontWeight: 900, color: '#5C3D00', lineHeight: 1 }}>
+                ₹{fmt(goldCurrentPaise)}
+              </div>
+              {goldInvested > 0 && (
+                <div
+                  className="mt-0.5 text-[10px] font-bold"
+                  style={{ color: goldPnl >= 0 ? 'var(--growth)' : '#C0392B' }}
+                >
+                  {goldPnl >= 0 ? '+' : ''}₹{fmt(goldPnl)} ({goldInvested > 0 ? ((goldPnl / goldInvested) * 100).toFixed(1) : '0'}%)
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-2 flex gap-3">
+            <div className="flex-1 text-center py-1.5 rounded-pill text-[10px] font-bold" style={{ background: '#D4A01720', color: '#7B5800' }}>
+              Buy ₹{(Number(goldPrice.buyPaisePerGram) / 100).toFixed(0)}/g
+            </div>
+            <div className="flex-1 text-center py-1.5 rounded-pill text-[10px] font-bold" style={{ background: '#D4A01720', color: '#7B5800' }}>
+              Sell ₹{(Number(goldPrice.sellPaisePerGram) / 100).toFixed(0)}/g
+            </div>
+          </div>
         </div>
 
         {/* Why these instruments */}

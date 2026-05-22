@@ -55,6 +55,8 @@ model User {
   pushSubscriptions PushSubscription[]
   kycRecords        KYCRecord[]
   consents          UserConsent[]
+  holdings          InvestmentHolding[]
+  investmentTxns    InvestmentTransaction[]
 }
 
 // V5 M9 — Referral tracking. Real DB rows; reward is a mock ₹100 credit entry.
@@ -427,4 +429,54 @@ model UserConsent {
   createdAt       DateTime @default(now())
 
   @@index([userId, consentType])
+}
+
+// Phase 4 — Digital Gold (Sona).
+// One holding row per user per asset type+provider. Updated on each buy/sell.
+// Grams stored as micrograms (×1,000,000) to avoid floats — same BigInt pattern.
+model InvestmentHolding {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetType           String    // gold | mf_equity | mf_debt | fd
+  provider            String    // safegold | kuvera | mock
+  // Gold-specific columns (micrograms: 1g = 1_000_000)
+  totalMicrograms     BigInt    @default(0)
+  avgBuyPaisePerGram  BigInt    @default(0)   // weighted average entry price
+  // Generic value tracking
+  investedPaise       BigInt    @default(0)
+  currentValuePaise   BigInt    @default(0)   // refreshed by price-sync cron
+  lastPricedAt        DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  transactions        InvestmentTransaction[]
+
+  @@unique([userId, assetType, provider])
+  @@index([userId, assetType])
+}
+
+// Every buy/sell of an investment asset. Append-only audit trail.
+model InvestmentTransaction {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdingId           String
+  holding             InvestmentHolding @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  assetType           String    // gold | mf_equity | mf_debt
+  txnType             String    // buy | sell
+  amountPaise         BigInt    // fiat amount deducted (buy) or credited (sell)
+  // Gold: grams × 1,000,000
+  micrograms          BigInt?
+  pricePerGramPaise   BigInt?   // spot price at transaction time
+  // PSP / provider fields
+  pspRefId            String?   // SafeGold order ID
+  pspRawJson          String?   // raw provider response (audit)
+  status              String    @default("success") // pending | success | failed
+  idempotencyKey      String    @unique
+  goalId              String?   // optional goal this purchase is attributed to
+  createdAt           DateTime  @default(now())
+
+  @@index([userId, assetType, createdAt])
+  @@index([holdingId])
 }
