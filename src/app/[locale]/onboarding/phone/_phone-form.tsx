@@ -8,9 +8,11 @@ import { Lock, ChevronLeft, ArrowRight, Gift } from 'lucide-react';
 
 export function PhoneForm({
   locale,
+  demoMode,
   labels,
 }: {
   locale: string;
+  demoMode: boolean;
   labels: {
     title: string;
     sub: string;
@@ -21,6 +23,7 @@ export function PhoneForm({
     sending: string;
     invalid: string;
     demoHint: string;
+    sendError: string;
     encrypted: string;
   };
 }) {
@@ -67,10 +70,17 @@ export function PhoneForm({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ phone }),
       });
-      if (!r.ok) throw new Error('send_failed');
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.ok === false) {
+        // Differentiate: 400 invalid_phone -> "10 digits chahiye"; 429 rate
+        // limited / 502 provider_failure -> "phir try karein".
+        if (r.status === 400) setError(labels.invalid);
+        else                  setError(labels.sendError);
+        return;
+      }
       router.push(`/${locale}/onboarding/otp?phone=${encodeURIComponent(phone)}`);
     } catch {
-      setError(labels.invalid);
+      setError(labels.sendError);
     } finally {
       setLoading(false);
     }
@@ -185,12 +195,14 @@ export function PhoneForm({
             {!loading && <ArrowRight size={16} />}
           </button>
 
-          <div
-            className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[11.5px]"
-            style={{ background: 'var(--bg-soft)', color: 'var(--muted)' }}
-          >
-            <Lock size={11} aria-hidden /> {labels.demoHint}
-          </div>
+          {demoMode && (
+            <div
+              className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[11.5px]"
+              style={{ background: 'var(--bg-soft)', color: 'var(--muted)' }}
+            >
+              <Lock size={11} aria-hidden /> {labels.demoHint}
+            </div>
+          )}
         </div>
       </div>
     </main>

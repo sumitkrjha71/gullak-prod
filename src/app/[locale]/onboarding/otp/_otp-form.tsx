@@ -11,10 +11,12 @@ const DEMO_OTP = '123456';
 export function OtpForm({
   locale,
   phone,
+  demoMode,
   labels,
 }: {
   locale: string;
   phone: string;
+  demoMode: boolean;
   labels: {
     title: string;
     sub: string;
@@ -25,6 +27,9 @@ export function OtpForm({
     why: string;
     whyLabel: string;
     resend: string;
+    resending: string;
+    resent: string;
+    sendError: string;
     encrypted: string;
   };
 }) {
@@ -33,6 +38,8 @@ export function OtpForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendTimer, setResendTimer] = useState(30);
+  const [resending, setResending] = useState(false);
+  const [resentToast, setResentToast] = useState(false);
   const submittedRef = useRef(false);
   const valid = /^\d{6}$/.test(code);
 
@@ -42,6 +49,33 @@ export function OtpForm({
     const t = setTimeout(() => setResendTimer((s) => s - 1), 1000);
     return () => clearTimeout(t);
   }, [resendTimer]);
+
+  // Actually re-trigger MSG91 SMS; reset the timer only on success.
+  const resend = async () => {
+    if (resending || resendTimer > 0) return;
+    setError(null);
+    setResentToast(false);
+    setResending(true);
+    try {
+      const r = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.ok === false) {
+        setError(labels.sendError);
+        return;
+      }
+      setResendTimer(30);
+      setResentToast(true);
+      setTimeout(() => setResentToast(false), 3000);
+    } catch {
+      setError(labels.sendError);
+    } finally {
+      setResending(false);
+    }
+  };
 
   const submit = async (codeOverride?: string) => {
     const finalCode = codeOverride ?? code;
@@ -136,38 +170,54 @@ export function OtpForm({
         </div>
 
         <div className="mt-6">
-          {/* DEMO OTP BANNER — prominent, click-to-fill */}
-          <button
-            type="button"
-            onClick={() => {
-              setCode(DEMO_OTP);
-              setError(null);
-            }}
-            disabled={loading}
-            className="haptic-press mb-4 flex w-full items-center gap-3 px-4 py-3 text-left transition-all disabled:opacity-50"
-            style={{
-              background: 'linear-gradient(145deg, #FFF5EC, #FFE9D2)',
-              border: '2px dashed var(--saffron)',
-              borderRadius: 'var(--radius-card-lg)',
-            }}
-          >
-            <div
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
-              style={{ background: 'var(--saffron)', color: '#fff' }}
-              aria-hidden
+          {/* DEMO OTP BANNER — only in demo / preview mode, never in live prod */}
+          {demoMode && (
+            <button
+              type="button"
+              onClick={() => {
+                setCode(DEMO_OTP);
+                setError(null);
+              }}
+              disabled={loading}
+              className="haptic-press mb-4 flex w-full items-center gap-3 px-4 py-3 text-left transition-all disabled:opacity-50"
+              style={{
+                background: 'linear-gradient(145deg, #FFF5EC, #FFE9D2)',
+                border: '2px dashed var(--saffron)',
+                borderRadius: 'var(--radius-card-lg)',
+              }}
             >
-              <Sparkles size={16} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[12.5px] font-extrabold uppercase tracking-wider" style={{ color: 'var(--saffron)' }}>
-                Demo OTP — Tap to fill
+              <div
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ background: 'var(--saffron)', color: '#fff' }}
+                aria-hidden
+              >
+                <Sparkles size={16} />
               </div>
-              <div className="num mt-0.5 text-[20px] font-extrabold tracking-[0.4em]" style={{ color: 'var(--text)' }}>
-                {DEMO_OTP}
+              <div className="flex-1 min-w-0">
+                <div className="text-[12.5px] font-extrabold uppercase tracking-wider" style={{ color: 'var(--saffron)' }}>
+                  Demo OTP — Tap to fill
+                </div>
+                <div className="num mt-0.5 text-[20px] font-extrabold tracking-[0.4em]" style={{ color: 'var(--text)' }}>
+                  {DEMO_OTP}
+                </div>
               </div>
+              <ArrowRight size={18} style={{ color: 'var(--saffron)' }} aria-hidden />
+            </button>
+          )}
+
+          {resentToast && (
+            <div
+              role="status"
+              className="mb-3 rounded-card-lg px-3 py-2 text-center text-[12.5px] font-semibold"
+              style={{
+                background: 'var(--growth-soft)',
+                border: '1px solid #cfe5d4',
+                color: 'var(--growth)',
+              }}
+            >
+              {labels.resent}
             </div>
-            <ArrowRight size={18} style={{ color: 'var(--saffron)' }} aria-hidden />
-          </button>
+          )}
 
           <div
             className="px-4"
@@ -200,18 +250,24 @@ export function OtpForm({
           )}
 
           <div className="mt-3 flex items-center justify-between text-[12px]" style={{ color: 'var(--muted)' }}>
-            <span className="inline-flex items-center gap-1">
-              <Lock size={11} aria-hidden /> Demo OTP: <span className="num font-bold">{DEMO_OTP}</span>
-            </span>
+            {demoMode ? (
+              <span className="inline-flex items-center gap-1">
+                <Lock size={11} aria-hidden /> Demo OTP: <span className="num font-bold">{DEMO_OTP}</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <Lock size={11} aria-hidden /> SMS check karein
+              </span>
+            )}
             <button
               type="button"
-              onClick={() => setResendTimer(30)}
-              disabled={resendTimer > 0}
+              onClick={resend}
+              disabled={resendTimer > 0 || resending}
               className="font-semibold disabled:opacity-50"
               style={{ color: 'var(--saffron)' }}
             >
-              {labels.resend}
-              {resendTimer > 0 && <span className="num"> ({resendTimer}s)</span>}
+              {resending ? labels.resending : labels.resend}
+              {resendTimer > 0 && !resending && <span className="num"> ({resendTimer}s)</span>}
             </button>
           </div>
 

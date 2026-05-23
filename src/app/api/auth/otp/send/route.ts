@@ -19,12 +19,17 @@ export async function POST(req: NextRequest) {
     }
 
     await sendOtp(phone);
-
-    // Always return ok:true — never reveal whether a phone is registered.
     return NextResponse.json({ ok: true });
   } catch (err) {
-    logger.error({ route: 'otp/send', err: (err as Error)?.message }, 'uncaught_error');
-    // Return ok:true even on failure to prevent phone enumeration.
-    return NextResponse.json({ ok: true });
+    // Provider failure (MSG91 down, template rejected, etc.) needs to be
+    // surfaced so the user knows to retry. Phone enumeration isn't a concern
+    // here — the failure is about the SMS pipeline, not about whether the
+    // phone is registered (registration happens at verify, not send).
+    const msg = (err as Error)?.message ?? 'unknown';
+    logger.error({ route: 'otp/send', err: msg }, 'otp_send_failed');
+    return NextResponse.json(
+      { ok: false, error: 'provider_failure' },
+      { status: 502 },
+    );
   }
 }

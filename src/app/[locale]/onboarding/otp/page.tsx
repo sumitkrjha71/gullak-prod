@@ -1,6 +1,11 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { OtpForm } from './_otp-form';
 
+function isDemoModeServer(): boolean {
+  if (process.env.NODE_ENV !== 'production') return true;
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+}
+
 export default async function OtpPage({
   params,
   searchParams,
@@ -17,6 +22,7 @@ export default async function OtpPage({
     <OtpForm
       locale={locale}
       phone={phone ?? ''}
+      demoMode={isDemoModeServer()}
       labels={{
         title: t('otp.title'),
         sub: `${phone ?? ''} ${t('phone.sentTo')}`,
@@ -27,6 +33,9 @@ export default async function OtpPage({
         why: t('phone.hint'),
         whyLabel: '',
         resend: t('otp.resend'),
+        resending: t('otp.resending'),
+        resent: t('otp.resent'),
+        sendError: t('otp.sendError'),
         encrypted: t('common.trustBadge'),
       }}
     />

@@ -44,21 +44,25 @@
     "title": "Chaliye, shuru karte hain",
     "sub": "Aapka mobile number — bas itna hi",
     "placeholder": "9876543210",
-    "send": "Send OTP",
+    "send": "OTP bhejein",
     "sending": "Bhej rahe hain…",
     "invalid": "10 digits ka mobile number daalein",
     "demoHint": "Demo build — koi bhi number chalega · OTP: 123456",
-    "hint": "Hum sirf isse aapko apne savings dikhane ke liye use karenge.",
-    "sentTo": "OTP sent to"
+    "hint": "Sirf aapki bachat dikhane ke liye — aur kuch nahi.",
+    "sentTo": "pe OTP bheja",
+    "sendError": "OTP nahi bhej paaye — thodi der baad phir try karein"
   },
   "otp": {
     "title": "Ek-do second mein verify hoga",
     "sub": "Aapko OTP bheja hai",
     "verify": "Verify karein",
     "verifying": "Verify ho raha hai…",
-    "wrong": "Galat OTP — try karein: 123456",
+    "wrong": "Galat code — SMS dobara check karein",
     "demoHint": "Demo OTP: 123456",
-    "resend": "Resend"
+    "resend": "Phir bhej dein",
+    "resending": "Bhej rahe hain…",
+    "resent": "Naya OTP bhej diya ✓",
+    "sendError": "OTP bhejne mein dikkat — phir try karein"
   },
   "name": {
     "title": "Aapko kya bulayein?",
