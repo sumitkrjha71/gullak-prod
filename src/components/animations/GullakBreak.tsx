@@ -4,27 +4,43 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 
+// Auto-detect OS-level prefers-reduced-motion; prop override wins when explicit.
+function usePrefersReducedMotion(): boolean {
+  const [prefers, setPrefers] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefers(mql.matches);
+    const onChange = (e: MediaQueryListEvent) => setPrefers(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return prefers;
+}
+
 /**
  * Gullak-break withdrawal animation.
  * Phase 1 (0-0.6s): Chiraiya approaches with a beak-tap, single thump impact.
  * Phase 2 (0.6-1.4s): Crack overlay grows on the pot.
  * Phase 3 (1.4-2.5s): Pot shatters into 4 polygon shards that rotate-and-fall, coins burst out.
- * Skippable on tap. Reduce-motion fallback: simple fade.
+ * Skippable on tap. Auto-respects OS prefers-reduced-motion (vestibular safety).
  *
- * Total duration: 2.5s.
+ * Total duration: 2.5s (or ~0.8s in reduced-motion mode).
  */
 export function GullakBreak({
   onDone,
-  reducedMotion = false,
+  reducedMotion,
   amountRupees,
 }: {
   onDone?: () => void;
   reducedMotion?: boolean;
   amountRupees: number;
 }) {
+  const osPrefersReduced = usePrefersReducedMotion();
+  const reduce = reducedMotion ?? osPrefersReduced;
   const [phase, setPhase] = useState(0);
   useEffect(() => {
-    if (reducedMotion) {
+    if (reduce) {
       const t = setTimeout(() => onDone?.(), 800);
       return () => clearTimeout(t);
     }
@@ -36,9 +52,9 @@ export function GullakBreak({
       clearTimeout(t2);
       clearTimeout(t3);
     };
-  }, [onDone, reducedMotion]);
+  }, [onDone, reduce]);
 
-  if (reducedMotion) {
+  if (reduce) {
     return (
       <div className="flex flex-col items-center gap-3 py-12">
         <Image

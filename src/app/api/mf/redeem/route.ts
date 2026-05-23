@@ -128,8 +128,8 @@ export async function POST(req: NextRequest) {
 
     // Exit load disclosure
     const exitLoadNote = fund.exitLoadPct > 0
-      ? `Exit load of ${(fund.exitLoadPct / 100).toFixed(2)}% applied if redeemed within ${fund.exitLoadDays} days of purchase.`
-      : 'No exit load on this fund.';
+      ? `Khareed ke ${fund.exitLoadDays} din ke andar redeem kiya, isliye ${(fund.exitLoadPct / 100).toFixed(2)}% exit load kat gaya.`
+      : 'Is fund pe koi exit load nahi.';
 
     return NextResponse.json({
       ok:            true,
@@ -140,8 +140,8 @@ export async function POST(req: NextRequest) {
       unitsRedeemed: unitsToRedeem,
       status:        result.status,
       disclosures: {
-        settlementNote: 'Redemption proceeds are credited to your bank account in T+3 business days.',
-        taxNote:        'Short-term capital gains (held < 1 year) taxed at 20%. Long-term gains (> 1 year) taxed at 12.5% above ₹1.25L. Please consult a tax advisor.',
+        settlementNote: 'Paisa 3 working days mein aapke bank account mein aa jaayega (T+3).',
+        taxNote:        '1 saal ke andar bechen toh 20% tax. 1+ saal baad bechen toh 12.5% tax aur ₹1.25L tak exemption. Tax advisor se sahi guidance lo.',
         exitLoadNote,
       },
     });

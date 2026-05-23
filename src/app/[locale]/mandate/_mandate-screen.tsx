@@ -69,32 +69,38 @@ export function MandateScreen({
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const authorise = () => {
+  const authorise = async () => {
     if (loading) return;
     setError(false);
     setLoading(true);
-    // Cache daily for the success screen which displays it.
     try {
-      const raw = sessionStorage.getItem('gullak_pending_rule');
-      const obj = raw ? JSON.parse(raw) : {};
-      sessionStorage.setItem(
-        'gullak_pending_rule',
-        JSON.stringify({ ...obj, mandateAuthorised: true, dailyRupees: amount }),
-      );
-    } catch {
-      // ignore
-    }
-    // Fire-and-forget — don't block the celebration screen on cold-start retries.
-    try {
-      fetch('/api/autopilot/mandate', {
+      const res = await fetch('/api/autopilot/mandate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ ruleId }),
-      }).catch(() => {});
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok === false) {
+        setError(true);
+        setLoading(false);
+        return;
+      }
+      // Cache for the success screen which displays it.
+      try {
+        const raw = sessionStorage.getItem('gullak_pending_rule');
+        const obj = raw ? JSON.parse(raw) : {};
+        sessionStorage.setItem(
+          'gullak_pending_rule',
+          JSON.stringify({ ...obj, mandateAuthorised: true, dailyRupees: amount }),
+        );
+      } catch {
+        // ignore
+      }
+      router.push(`/${locale}/success?rule=${ruleId}`);
     } catch {
-      // ignore
+      setError(true);
+      setLoading(false);
     }
-    router.push(`/${locale}/success?rule=${ruleId}`);
   };
 
   const fmt = (n: number) => new Intl.NumberFormat('en-IN').format(n);

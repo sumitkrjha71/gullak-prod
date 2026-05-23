@@ -21,10 +21,15 @@ interface InsightSpec {
 }
 
 function inr(paise: bigint): string {
+  // Negative-safe: copy sign separately so K/L shorthand reads sensibly
+  // ("−₹2.5K" not "₹-2.5K").
   const rupees = Number(paise) / 100;
-  if (rupees >= 100000) return `₹${(rupees / 100000).toFixed(1)}L`;
-  if (rupees >= 1000)   return `₹${(rupees / 1000).toFixed(1)}K`;
-  return `₹${rupees.toFixed(0)}`;
+  const sign = rupees < 0 ? '−' : '';
+  const abs  = Math.abs(rupees);
+  if (abs >= 100000) return `${sign}₹${(abs / 100000).toFixed(1)}L`;
+  // Use K shorthand only above ₹10K — keeps copy precise for everyday amounts.
+  if (abs >= 10000)  return `${sign}₹${(abs / 1000).toFixed(1)}K`;
+  return `${sign}₹${new Intl.NumberFormat('en-IN').format(Math.round(abs))}`;
 }
 
 export async function generateInsights(userId: string): Promise<void> {
@@ -67,6 +72,26 @@ export async function generateInsights(userId: string): Promise<void> {
 
 function buildInsightSpecs(p: UserFinancialProfile): InsightSpec[] {
   const specs: InsightSpec[] = [];
+
+  // ── 0. Deficit alert (highest priority) ───────────────────────────────────
+  // When monthly spend exceeds monthly income, every other insight is noise.
+  // We surface this first with a non-judgemental nudge.
+  if (p.avgMonthlySurplusPaise <= 0n && p.avgMonthlyCreditPaise > 0n) {
+    const shortfall = -p.avgMonthlySurplusPaise; // positive paise
+    specs.push({
+      insightType: 'deficit_alert',
+      severity:    'warn',
+      title:       `Mahine ke end mein ${inr(shortfall)} kam pad rahe hain`,
+      body:        `Tera kharcha kamai se thoda zyada ho raha hai. Tension nahi lena — saath mein dekhte hain. Ek ya do variable expense — Swiggy, OTT, shopping — kam karke shuru karte hain. Autopilot abhi paani halka chalega.`,
+      supportingData: {
+        avgMonthlyCreditPaise:  p.avgMonthlyCreditPaise.toString(),
+        avgMonthlyDebitPaise:   p.avgMonthlyDebitPaise.toString(),
+        avgMonthlySurplusPaise: p.avgMonthlySurplusPaise.toString(),
+        shortfallPaise:         shortfall.toString(),
+      },
+      actionType: 'reduce_sip',
+    });
+  }
 
   // ── 1. Surplus available ───────────────────────────────────────────────────
   if (p.avgMonthlySurplusPaise > 0n && p.recommendedSavePaise && p.recommendedSavePaise > 0n) {

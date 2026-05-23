@@ -139,7 +139,7 @@
     "nudge": "₹{a} ಯಿಂದ ₹{b} ಮಾಡಿ, ಗುರಿ {n} ತಿಂಗಳು ಮೊದಲು", "nudgeCta": "ಹೆಚ್ಚಿಸಿ",
     "tapToUnpack": "ಎಲ್ಲಿ ಹೂಡಿಕೆ ನೋಡಿ", "instruments": "ಹೂಡಿಕೆ ವಿಭಜನೆ",
     "instrGovBond": "ಸರ್ಕಾರಿ ಬಾಂಡ್‌ಗಳು", "instrGoldBond": "ಗೋಲ್ಡ್ ಬಾಂಡ್‌ಗಳು", "instrAAA": "AAA-ರೇಟೆಡ್ ಪೇಪರ್",
-    "navHome": "ಮನೆ", "navGoals": "ಗುರಿಗಳು", "navPortfolio": "ಪೋರ್ಟ್‌ಫೋಲಿಯೊ", "navProfile": "ಪ್ರೊಫೈಲ್",
+    "navHome": "ಮನೆ", "navGoals": "ಗುರಿಗಳು", "navKhata": "ಖಾತೆ", "navPortfolio": "ಪೋರ್ಟ್‌ಫೋಲಿಯೊ", "navProfile": "ಪ್ರೊಫೈಲ್",
     "empty": {
       "title": "ಮೊದಲ ಗುಲ್ಲಕ್ ಪ್ರಾರಂಭಿಸೋಣ",
       "sub": "ಪ್ರತಿ ದಿನ ಸ್ವಲ್ಪ — ನಾಳೆ ದೊಡ್ಡದು. ಗುರಿ ಆಯ್ಕೆಮಾಡಿ.",

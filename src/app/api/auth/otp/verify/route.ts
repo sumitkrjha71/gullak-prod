@@ -20,9 +20,14 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Demo phone fast-path ─────────────────────────────────────────────────
-    // The seeded demo user bypasses OTPChallenge so demos work even when the
-    // DB schema migration is pending or Neon is cold-starting.
-    if (phone === DEMO_PHONE && code.replace(/\D/g, '') === DEMO_OTP) {
+    // ONLY enabled outside production. In prod the demo phone must follow the
+    // real OTPChallenge path. Without this gate, anyone knowing 9999900000 +
+    // 123456 could sign in as the demo user on the live deployment.
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      phone === DEMO_PHONE &&
+      code.replace(/\D/g, '') === DEMO_OTP
+    ) {
       await createSession({ userId: DEMO_USER_ID, phone });
       return NextResponse.json({ ok: true });
     }

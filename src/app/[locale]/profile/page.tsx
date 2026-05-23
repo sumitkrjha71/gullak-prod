@@ -247,7 +247,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
       <BottomNav locale={locale} active="profile" labels={{
         home: t('dash.navHome'),
         goals: t('dash.navGoals'),
-        khata: 'Khata',
+        khata: t('dash.navKhata'),
         portfolio: t('dash.navPortfolio'),
         profile: t('dash.navProfile'),
       }} />

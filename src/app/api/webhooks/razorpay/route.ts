@@ -95,8 +95,10 @@ export async function POST(req: NextRequest) {
       data:  { errorMsg: msg },
     });
     logger.error({ eventId, eventType, err: msg }, 'webhook_processing_failed');
-    // Return 200 — we've logged; don't let Razorpay retry endlessly.
-    return NextResponse.json({ ok: false, error: msg }, { status: 200 });
+    // Return 500 so Razorpay retries. WebhookEvent.eventId @unique +
+    // processedAt-null check above makes retries safely idempotent: a
+    // successful replay short-circuits at the `existing?.processedAt` branch.
+    return NextResponse.json({ ok: false, error: 'retry' }, { status: 500 });
   }
 }
 

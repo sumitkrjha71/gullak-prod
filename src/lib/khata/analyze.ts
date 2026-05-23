@@ -94,7 +94,7 @@ export function detectIncome(
 // ─── Cashflow Analysis ───────────────────────────────────────────────────────
 
 export function analyzeCashflow(
-  txns: { amountPaise: bigint; txnType: string; category: string; isRecurring: boolean }[],
+  txns: { amountPaise: bigint; txnType: string; category: string; isRecurring: boolean; txnDate?: Date }[],
   months: MonthlyAggregate[],
   income: IncomeSignal,
 ): CashflowSignal {
@@ -142,13 +142,23 @@ export function analyzeCashflow(
   const foirPenalty = Math.min(debtRatio, 50);
   const stabilityScore = Math.max(0, Math.round(volatilityScore * 0.6 + (100 - foirPenalty * 1.5) * 0.4));
 
+  // emiCount = number of distinct EMI obligations. Real EMIs are fixed
+  // amount on a fixed day-of-month; deduping by (amountPaise, dayOfMonth)
+  // groups together repeat occurrences of the same loan while still counting
+  // separate loans separately. Fall back to unique amount if txnDate absent.
+  const recurringEmi = emiTxns.filter(t => t.txnType === 'DEBIT' && t.isRecurring);
+  const emiKeys = new Set(recurringEmi.map(t => {
+    const day = t.txnDate ? t.txnDate.getDate() : 0;
+    return `${t.amountPaise.toString()}:${day}`;
+  }));
+
   return {
     avgMonthlySurplusPaise: avgSurplus,
     surplusVolatilityScore: volatilityScore,
     cashflowStabilityScore: stabilityScore,
     debtIncomeRatioPct: debtRatio,
     emiTotalPaise: emiTotal,
-    emiCount: new Set(emiTxns.filter(t => t.isRecurring).length > 0 ? emiTxns : []).size,
+    emiCount: emiKeys.size,
     subscriptionCount: subGroups.size,
     subscriptionTotalPaise: subTotal,
     fixedExpensesPaise: fixedTotal,

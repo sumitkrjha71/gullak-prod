@@ -1,14 +1,26 @@
 // Rate limiting via Upstash Redis.
 // Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN in env to enable.
-// Without those vars, all checks pass (safe for local dev).
+// In dev/preview missing config silently passes; in production it must be
+// configured or every protected route fails closed.
 
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis }     from '@upstash/redis';
+import { logger }    from '@/lib/logger';
+
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 function buildLimiter(requests: number, window: `${number} ${'s'|'m'|'h'}`) {
   const url   = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
+  if (!url || !token) {
+    if (IS_PROD) {
+      logger.error(
+        { feature: 'ratelimit' },
+        'upstash_missing_in_production — rate limiter will fail closed',
+      );
+    }
+    return null;
+  }
 
   return new Ratelimit({
     redis:     new Redis({ url, token }),
@@ -34,7 +46,13 @@ async function check(
   limiter: ReturnType<typeof buildLimiter>,
   key: string,
 ): Promise<RateLimitResult> {
-  if (!limiter) return { allowed: true, remaining: 999, reset: 0 };
+  if (!limiter) {
+    // Production with missing Upstash → fail closed. Dev/preview → pass.
+    if (IS_PROD) {
+      return { allowed: false, remaining: 0, reset: Date.now() + 60_000 };
+    }
+    return { allowed: true, remaining: 999, reset: 0 };
+  }
   const { success, remaining, reset } = await limiter.limit(key);
   return { allowed: success, remaining, reset };
 }

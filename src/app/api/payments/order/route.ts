@@ -30,7 +30,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { amountPaise, goalId, source, description } = body.data;
-    const idempotencyKey = buildIdempotencyKey({ userId: session.userId, source, slot: `${source}-${Date.now()}` });
+    // Idempotency: prefer the client-supplied X-Idempotency-Key (UUID per user
+    // intent). When absent we fall back to a content-derived slot so two rapid
+    // taps with the same payload collapse to one order instead of double-charging.
+    const clientKey = req.headers.get('x-idempotency-key');
+    const slot = clientKey ?? `${source}:${amountPaise}:${goalId ?? ''}`;
+    const idempotencyKey = buildIdempotencyKey({ userId: session.userId, source, slot });
     const amountRs = (amountPaise / 100).toFixed(2);
 
     // UPI Intent deeplink — works without Razorpay account, opens system picker

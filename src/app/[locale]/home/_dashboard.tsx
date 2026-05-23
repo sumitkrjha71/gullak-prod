@@ -59,6 +59,7 @@ type Labels = {
   tapToUnpack: string;
   navHome: string;
   navGoals: string;
+  navKhata: string;
   navPortfolio: string;
   navProfile: string;
   emptyTitle: string;
@@ -553,7 +554,7 @@ export function Dashboard({
         {[
           { icon: '🏠', label: labels.navHome,      href: `/${locale}/home`,      active: true },
           { icon: '🎯', label: labels.navGoals,     href: `/${locale}/goals`     },
-          { icon: '📒', label: 'Khata',             href: `/${locale}/khata`     },
+          { icon: '📒', label: labels.navKhata,     href: `/${locale}/khata`     },
           { icon: '📊', label: labels.navPortfolio, href: `/${locale}/portfolio` },
           { icon: '👤', label: labels.navProfile,   href: `/${locale}/profile`   },
         ].map((n) => (

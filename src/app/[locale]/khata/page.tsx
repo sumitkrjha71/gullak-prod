@@ -1,5 +1,5 @@
 import { redirect }          from 'next/navigation';
-import { setRequestLocale }  from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { readSession }       from '@/lib/auth/session';
 import { prisma }            from '@/lib/db/client';
 import { KhataView }         from './_khata-view';
@@ -19,6 +19,7 @@ function b(v: bigint | null | undefined): string | null {
 export default async function KhataPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations({ locale });
 
   const session = await readSession();
   if (!session) redirect(`/${locale}`);
@@ -144,7 +145,13 @@ export default async function KhataPage({ params }: { params: Promise<{ locale: 
       <BottomNav
         locale={locale}
         active="khata"
-        labels={{ home: 'Home', goals: 'Goals', portfolio: 'Portfolio', profile: 'Profile', khata: 'Khata' }}
+        labels={{
+          home:      t('dash.navHome'),
+          goals:     t('dash.navGoals'),
+          khata:     t('dash.navKhata'),
+          portfolio: t('dash.navPortfolio'),
+          profile:   t('dash.navProfile'),
+        }}
       />
     </>
   );

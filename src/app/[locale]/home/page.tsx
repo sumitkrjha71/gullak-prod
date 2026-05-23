@@ -211,6 +211,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         tapToUnpack: t('dash.tapToUnpack'),
         navHome: t('dash.navHome'),
         navGoals: t('dash.navGoals'),
+        navKhata: t('dash.navKhata'),
         navPortfolio: t('dash.navPortfolio'),
         navProfile: t('dash.navProfile'),
         emptyTitle: t('dash.empty.title'),

@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
         error:            'suitability_mismatch',
         fundRiskCategory: fund.riskCategory,
         investorProfile:  riskProfile.profile,
-        message:          'This fund\'s risk level is higher than your risk profile. Please retake your risk assessment or choose a fund that matches your profile.',
+        // Bharat-voice: explain *why*, offer a path forward, never shame.
+        message:          'Yeh fund aapke profile ke liye thoda zyada risky hai. Aap kuch steady funds dekh sakte ho — ya risk assessment dobara karke profile update kar do.',
       }, { status: 422 });
     }
 
@@ -164,9 +165,11 @@ export async function POST(req: NextRequest) {
     logger.info({ userId, txnId: txn.id, schemeCode, amountPaise, status: result.status }, 'mf_buy_completed');
 
     // SEBI-mandated disclosures included in every order response.
+    // English SEBI warning kept verbatim (compliance), supplemented with
+    // Bharat-voice plain-language notes for the UI.
     const exitLoadWarning = fund.exitLoadPct > 0
-      ? `Exit load of ${(fund.exitLoadPct / 100).toFixed(2)}% applies if redeemed within ${fund.exitLoadDays} days.`
-      : 'No exit load.';
+      ? `${fund.exitLoadDays} din ke andar redeem kiya toh ${(fund.exitLoadPct / 100).toFixed(2)}% exit load kat jaayega.`
+      : 'Kabhi bhi redeem karo — koi exit load nahi.';
 
     return NextResponse.json({
       ok:          true,
@@ -177,13 +180,14 @@ export async function POST(req: NextRequest) {
       navDate:     fund.navDate ?? null,
       status:      result.status,
       amountPaise: amountPaise.toString(),
-      // Compliance disclosures
+      // Compliance disclosures — SEBI warning is verbatim; notes use Bharat-voice.
       disclosures: {
         sebiWarning:      'Mutual Fund investments are subject to market risks. Read all scheme-related documents carefully before investing.',
+        sebiWarningHi:    'Mutual Fund mein invest market risk ke saath aata hai. Scheme documents dhyan se padho.',
         riskCategory:     fund.riskCategory,
-        expenseRatioNote: `Annual expense ratio: ${(fund.expenseRatioBps / 100).toFixed(2)}% (Direct plan).`,
+        expenseRatioNote: `Saalana fund management fee ${(fund.expenseRatioBps / 100).toFixed(2)}% hai (Direct plan).`,
         exitLoadNote:     exitLoadWarning,
-        navNote:          `NAV used: ₹${(Number(result.navPaise) / 100).toFixed(4)} as of ${fund.navDate ?? 'today'}. Actual allotment NAV may differ in real mode (T+1 rule).`,
+        navNote:          `NAV ₹${(Number(result.navPaise) / 100).toFixed(4)} use hua, ${fund.navDate ?? 'aaj ki date'} ka. Real mode mein actual allotment NAV thoda alag ho sakta hai (T+1).`,
       },
     });
 

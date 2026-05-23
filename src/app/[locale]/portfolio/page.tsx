@@ -9,6 +9,7 @@ import { BottomNav } from '@/components/nav/BottomNav';
 import { MunafaChart } from '@/components/money/MunafaChart';
 import { buildChartSeries } from '@/lib/money/series';
 import { InstrumentPie } from '@/components/money/InstrumentPie';
+import { computeXirr, type Cashflow } from '@/lib/portfolio/xirr';
 
 const INSTRUMENTS = [
   {
@@ -47,7 +48,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
 
   const goldProvider = process.env.GOLD_REAL === 'true' ? 'safegold' : 'mock';
 
-  const [goals, goldHolding, goldPrice, mfHoldings] = await Promise.all([
+  const [goals, goldHolding, goldPrice, mfHoldings, goldTxns, mfTxns] = await Promise.all([
     prisma.goal.findMany({ where: { userId: session.userId, status: 'active' } }),
     prisma.investmentHolding.findUnique({
       where: { userId_assetType_provider: { userId: session.userId, assetType: 'gold', provider: goldProvider } },
@@ -56,6 +57,14 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
     prisma.mFHolding.findMany({
       where:   { userId: session.userId, totalMicroUnits: { gt: 0n } },
       include: { fund: { select: { schemeName: true, category: true, navPaise: true, navDate: true } } },
+    }),
+    prisma.investmentTransaction.findMany({
+      where:   { userId: session.userId, assetType: 'gold' },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.mFTransaction.findMany({
+      where:   { userId: session.userId },
+      orderBy: { createdAt: 'asc' },
     }),
   ]);
 
@@ -91,6 +100,31 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
 
   const totalDisplay = totalSaved + totalGrowth;
   const growthPct = totalSaved > 0 ? ((totalGrowth / totalSaved) * 100).toFixed(2) : '0.00';
+
+  // ── Annualised return (XIRR) across every investment cashflow ──────────────
+  // Treat buys as outflows (negative), redeems/sells as inflows (positive),
+  // and current MTM as a fictitious sell today. Hides if too few txns to converge.
+  const cashflows: Cashflow[] = [];
+  for (const t of goldTxns) {
+    cashflows.push({
+      amountPaise: t.txnType === 'buy' ? -t.amountPaise : t.amountPaise,
+      date:        t.createdAt,
+    });
+  }
+  for (const t of mfTxns) {
+    cashflows.push({
+      amountPaise: t.txnType === 'redeem' ? t.amountPaise : -t.amountPaise,
+      date:        t.createdAt,
+    });
+  }
+  if (cashflows.length > 0) {
+    const liveValuePaise = BigInt(Math.round(goldCurrentPaise + mfTotalValue));
+    if (liveValuePaise > 0n) {
+      cashflows.push({ amountPaise: liveValuePaise, date: new Date() });
+    }
+  }
+  const xirrRate = computeXirr(cashflows);
+  const xirrPct  = xirrRate != null ? (xirrRate * 100).toFixed(1) : null;
 
   const chartSeries = buildChartSeries({
     userId: session.userId,
@@ -135,7 +169,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
           }}
         >
           <div className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--terracotta)' }}>
-            Total Portfolio Value
+            Aapka kul portfolio
           </div>
           <div
             className="num mt-1"
@@ -143,10 +177,28 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
           >
             ₹{fmt(totalDisplay)}
           </div>
-          <div className="mt-2 inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-bold"
-            style={{ background: 'var(--growth-soft)', color: 'var(--growth)' }}>
-            <TrendingUp size={11} aria-hidden /> +₹{fmt(totalGrowth)} ({growthPct}%)
+          <div className="mt-2 inline-flex flex-wrap items-center justify-center gap-1.5">
+            <span
+              className="inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-bold"
+              style={{ background: 'var(--growth-soft)', color: 'var(--growth)' }}
+            >
+              <TrendingUp size={11} aria-hidden /> +₹{fmt(totalGrowth)} ({growthPct}%)
+            </span>
+            {xirrPct && (
+              <span
+                className="num inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-bold"
+                style={{ background: 'var(--trust-soft)', color: 'var(--trust)' }}
+                title="Annualised return (XIRR) across all your investments"
+              >
+                Saalana {xirrPct}%
+              </span>
+            )}
           </div>
+          {xirrPct && (
+            <p className="mt-2 text-[10.5px]" style={{ color: 'var(--muted)' }}>
+              Aapke paise har saal {xirrPct}% badh rahe hain
+            </p>
+          )}
         </div>
 
         {/* 3-stat split */}
@@ -356,7 +408,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ loca
       <BottomNav locale={locale} active="portfolio" labels={{
         home: t('dash.navHome'),
         goals: t('dash.navGoals'),
-        khata: 'Khata',
+        khata: t('dash.navKhata'),
         portfolio: t('dash.navPortfolio'),
         profile: t('dash.navProfile'),
       }} />

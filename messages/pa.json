@@ -139,7 +139,7 @@
     "nudge": "₹{a} ਤੋਂ ₹{b} ਕਰੋ ਤਾਂ {n} ਮਹੀਨੇ ਪਹਿਲਾਂ", "nudgeCta": "ਵਧਾਓ",
     "tapToUnpack": "ਦੇਖੋ ਕਿੱਥੇ ਨਿਵੇਸ਼", "instruments": "ਨਿਵੇਸ਼ ਦੀ ਵੰਡ",
     "instrGovBond": "ਸਰਕਾਰੀ ਬਾਂਡ", "instrGoldBond": "ਗੋਲਡ ਬਾਂਡ", "instrAAA": "AAA-ਰੇਟਿਡ ਕਾਗਜ਼",
-    "navHome": "ਘਰ", "navGoals": "ਟੀਚੇ", "navPortfolio": "ਪੋਰਟਫੋਲੀਓ", "navProfile": "ਪ੍ਰੋਫ਼ਾਈਲ",
+    "navHome": "ਘਰ", "navGoals": "ਟੀਚੇ", "navKhata": "ਖਾਤਾ", "navPortfolio": "ਪੋਰਟਫੋਲੀਓ", "navProfile": "ਪ੍ਰੋਫ਼ਾਈਲ",
     "empty": {
       "title": "ਪਹਿਲਾ ਗੁੱਲਕ ਸ਼ੁਰੂ ਕਰੀਏ",
       "sub": "ਰੋਜ਼ ਥੋੜਾ — ਕੱਲ੍ਹ ਵੱਡਾ। ਟੀਚਾ ਚੁਣੋ।",
