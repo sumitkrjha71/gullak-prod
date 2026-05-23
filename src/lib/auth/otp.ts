@@ -36,6 +36,17 @@ function getDemoCode(): string {
 }
 
 // ── MSG91 sender ─────────────────────────────────────────────────────────────
+//
+// MSG91 v5 OTP API quirks (the reasons earlier attempts silently failed):
+//   - Field is `mobile` (singular). `mobiles` is the bulk-SMS shape and gets
+//     ignored, so the request returns 200 with no SMS queued.
+//   - 200 OK !== "delivered". The response body carries
+//       { "type": "success" | "error", "message": "...", "request_id": "..." }
+//     DLT-not-approved, template-pending, low balance, and unauthorised
+//     sender ID all surface as `type: "error"` inside a 200 response.
+//   - `mobile` must include the country code with no `+` (e.g. "919876543210").
+//   - `otp_length` is required when the template variable is `##OTP##` and
+//     the OTP digits don't match the template's declared length.
 
 async function sendViaMSG91(phone: string, code: string): Promise<void> {
   const authKey = process.env.MSG91_AUTH_KEY!;
@@ -43,25 +54,56 @@ async function sendViaMSG91(phone: string, code: string): Promise<void> {
 
   const body = JSON.stringify({
     template_id: templateId,
-    mobiles: `91${phone}`,
-    otp: code,
+    mobile:      `91${phone}`,
+    otp:         code,
+    otp_length:  6,
   });
 
-  const res = await fetch('https://control.msg91.com/api/v5/otp', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      authkey: authKey,
-    },
-    body,
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`MSG91 error ${res.status}: ${text}`);
+  let res: Response;
+  try {
+    res = await fetch('https://control.msg91.com/api/v5/otp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'authkey': authKey,
+      },
+      body,
+    });
+  } catch (networkErr) {
+    logger.error(
+      { provider: 'msg91', err: (networkErr as Error)?.message },
+      'msg91_network_failure',
+    );
+    throw new Error(`msg91_network_failure: ${(networkErr as Error)?.message}`);
   }
 
-  logger.info({ phone: '[REDACTED]', provider: 'msg91' }, 'otp_sent');
+  const rawText = await res.text();
+  let parsed: { type?: string; message?: string; request_id?: string } = {};
+  try { parsed = JSON.parse(rawText); } catch { /* not JSON */ }
+
+  const ok = res.ok && parsed.type === 'success';
+  if (!ok) {
+    logger.error(
+      {
+        provider:    'msg91',
+        httpStatus:  res.status,
+        bodyType:    parsed.type ?? 'no_type',
+        bodyMessage: parsed.message ?? 'no_message',
+        requestId:   parsed.request_id ?? null,
+        templateId:  templateId.slice(0, 6) + '…', // partial, for traceability
+        // Never log full authkey or the OTP code itself.
+      },
+      'msg91_send_failed',
+    );
+    throw new Error(
+      `msg91_send_failed:${res.status}:${parsed.type ?? 'unknown'}:${parsed.message ?? 'no_message'}`,
+    );
+  }
+
+  logger.info(
+    { provider: 'msg91', requestId: parsed.request_id ?? null },
+    'otp_sent',
+  );
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
