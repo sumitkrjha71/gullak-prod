@@ -6,7 +6,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
-const DEMO_OTP = '123456';
+// DEMO_OTP only ships to the client bundle when explicitly enabled.
+// Default in production: empty string so the constant cannot be read off
+// the JS chunk. See docs/OPEN_DEBT.md D-002.
+const DEMO_OTP =
+  process.env.NEXT_PUBLIC_DEMO_OTP_ENABLED === 'true' ? '123456' : '';
 
 export function OtpForm({
   locale,
@@ -222,11 +226,11 @@ export function OtpForm({
           <div
             className="px-4"
             style={{
-              background: 'var(--surface)',
-              border: `2px solid ${error ? 'var(--warn)' : code.length === 6 ? 'var(--growth)' : 'var(--border)'}`,
+              background: 'var(--surface-elev)',
+              border: `2px solid ${error ? 'var(--money-down)' : code.length === 6 ? 'var(--money-up)' : 'var(--ink-100)'}`,
               borderRadius: 'var(--radius-card-lg)',
-              boxShadow: code.length > 0 ? '0 4px 14px rgba(26,122,74,0.08)' : 'var(--shadow-card)',
-              transition: 'all 0.2s ease',
+              boxShadow: code.length > 0 ? '0 1px 2px rgba(15,17,21,0.04)' : 'none',
+              transition: 'border-color 200ms cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
             <input
@@ -274,10 +278,10 @@ export function OtpForm({
           <button
             onClick={() => submit()}
             disabled={!valid || loading}
-            className="haptic-press cta-primary mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-btn text-[16px] font-bold disabled:opacity-50"
+            className="haptic-press cta-primary-v2 mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-btn text-[16px] font-bold disabled:opacity-40"
           >
             {loading ? labels.verifying : labels.verify}
-            {!loading && <ArrowRight size={16} />}
+            {!loading && <ArrowRight size={16} strokeWidth={2} />}
           </button>
         </div>
       </div>

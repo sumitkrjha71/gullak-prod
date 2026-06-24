@@ -137,11 +137,11 @@ export function PhoneForm({
           <div
             className="flex items-center px-4"
             style={{
-              background: 'var(--surface)',
-              border: `2px solid ${error ? 'var(--warn)' : phone.length === 10 ? 'var(--saffron)' : 'var(--border)'}`,
+              background: 'var(--surface-elev)',
+              border: `2px solid ${error ? 'var(--money-down)' : phone.length === 10 ? 'var(--ink-900)' : 'var(--ink-100)'}`,
               borderRadius: 'var(--radius-card-lg)',
-              boxShadow: phone.length > 0 ? '0 4px 14px rgba(232,101,10,0.08)' : 'var(--shadow-card)',
-              transition: 'all 0.2s ease',
+              boxShadow: phone.length > 0 ? '0 1px 2px rgba(15,17,21,0.04)' : 'none',
+              transition: 'border-color 200ms cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
             <span
@@ -189,10 +189,10 @@ export function PhoneForm({
           <button
             onClick={submit}
             disabled={!valid || loading}
-            className="haptic-press cta-primary mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-btn text-[16px] font-bold transition-opacity disabled:opacity-50"
+            className="haptic-press cta-primary-v2 mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-btn text-[16px] font-bold transition-opacity disabled:opacity-40"
           >
             {loading ? labels.sending : labels.send}
-            {!loading && <ArrowRight size={16} />}
+            {!loading && <ArrowRight size={16} strokeWidth={2} />}
           </button>
 
           {demoMode && (

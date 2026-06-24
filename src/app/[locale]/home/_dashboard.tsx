@@ -12,6 +12,8 @@ import { FestivalNudge } from '@/components/festival/FestivalNudge';
 import { RankCard } from '@/components/leaderboard/RankCard';
 import { GroupGullakCard } from '@/components/group/GroupGullakCard';
 import { LogoutButton } from '@/components/auth/LogoutButton';
+import { HeroBalance } from '@/components/ds/HeroBalance';
+import { Chiraiya } from '@/components/mascot/Chiraiya';
 
 type Goal = {
   id: string;
@@ -227,13 +229,10 @@ export function Dashboard({
         </h2>
       </div>
 
-      {/* V5 M1 — Group Gullak hero CTA. Sits at the very top of the dashboard
-           (right under the greeting) so it's the first thing the investor sees.
-           Pulsing glow + gradient shimmer + bouncing arrow + NAYA badge — designed
-           to be impossible to scroll past without tapping. */}
-      <div className="mx-4 mt-3.5">
-        <GroupGullakCard locale={locale} />
-      </div>
+      {/* Group Gullak entry — demoted from the top-hero position to a quiet
+           secondary card below the balance + chart. The dashboard hero is now
+           the user's ₹ amount, not a promotional card. Group Gullak still gets
+           prominent placement but earns the tap, doesn't beg for it. */}
 
       {/* Zone B — Chart */}
       <section data-walkthrough="chart" className="px-3.5 pt-3 anim-fade-in">
@@ -246,8 +245,8 @@ export function Dashboard({
                 onClick={() => setChartView(k)}
                 className="haptic-press rounded-md px-2 py-1 text-[10px] font-bold transition-colors"
                 style={{
-                  background: chartView === k ? 'var(--saffron)' : 'var(--border)',
-                  color: chartView === k ? '#fff' : 'var(--muted)',
+                  background: chartView === k ? 'var(--ink-900)' : 'var(--ink-100)',
+                  color: chartView === k ? '#fff' : 'var(--ink-500)',
                 }}
               >
                 {k === 'balance' ? labels.balance : k === 'saved' ? labels.saved : labels.munafa}
@@ -290,46 +289,42 @@ export function Dashboard({
         </div>
       </section>
 
-      {/* Zone C — Balance with floating Chiraiya + Gullak */}
-      <section data-walkthrough="balance" className="relative px-4 pt-3 text-center">
-        <Link href={`/${locale}/transparency`} aria-label="See where your money is invested" className="block">
-          <Image
-            src="/assets/chiraiya-v2.png"
-            alt=""
-            width={42}
-            height={35}
-            className="absolute right-4 top-0 anim-float"
-            style={{
-              width: 42,
-              height: 35,
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.1))',
-            }}
-          />
-          <Image
-            src="/assets/gullak-pot.png"
-            alt=""
-            width={56}
-            height={48}
-            className="mx-auto"
-            style={{
-              width: 56,
-              height: 48,
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 2px 8px rgba(212,160,23,0.3))',
-            }}
-          />
-          <div className="mt-1 text-[34px] font-extrabold tabular-nums text-text">
-            ₹{fmt(totalSavedRupees)}
-          </div>
-          <div className="text-[11px] text-muted">{labels.totalJama}</div>
-          <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-trust">
-            🔍 {labels.tapToUnpack}
+      {/* Zone C — Hero balance card.
+           v2: HeroBalance primitive is the visual hero. Chiraiya stays present
+           but as a smaller poised companion to the side (one-shot finite float,
+           not infinite). The whole card is tappable to /transparency.
+           Streak chip moved below the card, ink-toned. */}
+      <section data-walkthrough="balance" className="relative mx-4 pt-3">
+        <Link
+          href={`/${locale}/transparency`}
+          aria-label="See where your money is invested"
+          className="block"
+        >
+          <div className="relative">
+            <HeroBalance
+              amountPaise={BigInt(totalSavedRupees) * 100n}
+              caption={labels.totalJama}
+              subtext={labels.tapToUnpack}
+              trustStrip
+            />
+            {/* Lively Chiraiya — small, top-right of the hero card, in
+                `save-success` state so she carries a coin (matches the moment) */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute"
+              style={{ top: 8, right: 12 }}
+            >
+              <Chiraiya state="save-success" size={48} />
+            </div>
           </div>
         </Link>
+
         {streakDays > 0 && (
-          <div className="mx-auto mt-1 inline-flex items-center gap-1 rounded-pill bg-bg-highlight px-3 py-1 text-[11px] font-bold text-saffron">
-            🔥 {labels.streak}
+          <div
+            className="mx-auto mt-2 inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[11px] font-bold"
+            style={{ background: 'var(--ink-100)', color: 'var(--ink-900)' }}
+          >
+            🔥 <span>{labels.streak}</span>
           </div>
         )}
       </section>
@@ -511,6 +506,12 @@ export function Dashboard({
       {/* V5 M2 — Burst-mode button. Sits prominently above credit zone. */}
       <div className="mx-4 mt-3">
         <BurstButton labels={labels.burst} />
+      </div>
+
+      {/* Group Gullak — demoted from the dashboard hero. Lives here as a
+           secondary feature card, restrained in styling (see v2 GroupGullakCard). */}
+      <div className="mx-4 mt-3">
+        <GroupGullakCard locale={locale} />
       </div>
 
       {/* Credit zone — only when eligible. Sits in Zone H beside the nudge. */}
